@@ -6,6 +6,7 @@ import { Spinner } from './components/ui'
 import Layout from './components/Layout'
 import SetupScreen from './pages/SetupScreen'
 import Auth from './pages/Auth'
+import ResetPassword from './pages/ResetPassword'
 import Onboarding from './pages/Onboarding'
 import Today from './pages/Today'
 import Workout from './pages/Workout'
@@ -20,10 +21,11 @@ import Achievements from './pages/Achievements'
 import Profile from './pages/Profile'
 
 export default function App() {
-  const { user, loading } = useAuth()
+  const { user, loading, recovery } = useAuth()
 
   if (!supabaseConfigured) return <SetupScreen />
   if (loading) return <div className="app-shell"><div className="page"><Spinner label="Cargando…" /></div></div>
+  if (recovery) return <ResetPassword />
   if (!user) return <Auth />
   return <AuthedApp />
 }

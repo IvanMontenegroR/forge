@@ -33,6 +33,26 @@ export default function Auth() {
     }
   }
 
+  async function forgotPassword() {
+    setErr(null); setMsg(null)
+    if (!email) {
+      setErr('Escribí tu email arriba y volvé a tocar “¿Olvidaste tu contraseña?”.')
+      return
+    }
+    setBusy(true)
+    try {
+      // Volvemos a la app (respeta el base /forge/ en prod) para fijar la nueva clave.
+      const redirectTo = window.location.origin + import.meta.env.BASE_URL
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+      if (error) throw error
+      setMsg('Te mandamos un email con el link para restablecer tu contraseña. Revisá tu casilla (y spam).')
+    } catch (e) {
+      setErr(e.message || 'No se pudo enviar el email de reset.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="app-shell">
       <div className="page" style={{ paddingTop: 48 }}>
@@ -71,6 +91,18 @@ export default function Auth() {
           <button className="btn btn-primary btn-block btn-lg" disabled={busy}>
             {busy ? 'Un momento…' : mode === 'signup' ? 'Crear cuenta' : 'Entrar'}
           </button>
+
+          {mode === 'signin' && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm btn-block mt-12"
+              style={{ border: 'none' }}
+              onClick={forgotPassword}
+              disabled={busy}
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          )}
         </form>
 
         <p className="faint center mt-16" style={{ fontSize: '0.8rem' }}>
