@@ -113,11 +113,15 @@ function NumField({ label, value, onChange, step }) {
 }
 
 function FoodEditor({ foods, userId, qc }) {
-  const [n, setN] = useState({ name: '', protein_g: '', serving: '' })
+  const [n, setN] = useState({ name: '', protein_g: '', kcal: '', serving: '' })
   async function add() {
     if (!n.name) return
-    await supabase.from('user_foods').insert({ user_id: userId, name: n.name, protein_g: Number(n.protein_g) || 0, serving: n.serving, sort_order: (foods?.length || 0) })
-    setN({ name: '', protein_g: '', serving: '' })
+    await supabase.from('user_foods').insert({
+      user_id: userId, name: n.name,
+      protein_g: Number(n.protein_g) || 0, kcal: n.kcal ? Number(n.kcal) : null,
+      serving: n.serving, sort_order: (foods?.length || 0),
+    })
+    setN({ name: '', protein_g: '', kcal: '', serving: '' })
     qc.invalidateQueries({ queryKey: qk.foods(userId) })
   }
   async function del(id) {
@@ -129,14 +133,15 @@ function FoodEditor({ foods, userId, qc }) {
       <div className="col">
         {(foods || []).map((food) => (
           <div key={food.id} className="list-row">
-            <span className="grow"><strong style={{ fontSize: '0.9rem' }}>{food.name}</strong> <span className="faint num">{food.protein_g}g · {food.serving}</span></span>
+            <span className="grow"><strong style={{ fontSize: '0.9rem' }}>{food.name}</strong> <span className="faint num">{food.protein_g}g{food.kcal ? ` · ${food.kcal} kcal` : ''}{food.serving ? ` · ${food.serving}` : ''}</span></span>
             <button className="btn btn-ghost btn-icon btn-sm" onClick={() => del(food.id)} aria-label="borrar"><Trash2 size={15} /></button>
           </div>
         ))}
       </div>
       <div className="row gap-8 mt-12">
-        <input className="input" placeholder="Comida" value={n.name} onChange={(e) => setN({ ...n, name: e.target.value })} />
-        <input className="input num" style={{ width: 80 }} placeholder="g prot" value={n.protein_g} onChange={(e) => setN({ ...n, protein_g: e.target.value })} />
+        <input className="input grow" placeholder="Comida" value={n.name} onChange={(e) => setN({ ...n, name: e.target.value })} />
+        <input className="input num" style={{ width: 74 }} placeholder="g prot" value={n.protein_g} onChange={(e) => setN({ ...n, protein_g: e.target.value })} />
+        <input className="input num" style={{ width: 74 }} placeholder="kcal" value={n.kcal} onChange={(e) => setN({ ...n, kcal: e.target.value })} />
         <button className="btn btn-primary btn-icon" onClick={add}><Plus size={18} /></button>
       </div>
     </Card>

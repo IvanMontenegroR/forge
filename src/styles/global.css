@@ -188,6 +188,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 .bar.xp > span { background: linear-gradient(90deg, var(--xp), #e0a3ff); }
 .bar.success > span { background: var(--success); }
 .bar.info > span { background: var(--info); }
+.bar.warn > span { background: var(--warn); }
 
 /* ---------- Stat ---------- */
 .stat { display: flex; flex-direction: column; gap: 2px; }

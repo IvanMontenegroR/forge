@@ -2,13 +2,13 @@ import { useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Dumbbell, Moon, Beef, Pill, Footprints, Ruler, Sparkles, Camera,
-  ChevronRight, Play, CheckCircle2, Coffee, Zap,
+  ChevronRight, Play, CheckCircle2, Coffee, Zap, Flame,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
   useProfile, useProgramDays, useTodaySession, useNutritionToday,
   useSupplements, useSupplementLogs, useStepsToday,
-  useWeeklyQuests, useBodyMetrics,
+  useWeeklyQuests, useBodyMetrics, useNutritionWeek,
 } from '../data/hooks'
 import { useAwards } from '../data/awards'
 import { ensureStreaks, ensureWeeklyQuests } from '../data/bootstrap'
@@ -29,6 +29,7 @@ export default function Today() {
   const { data: steps } = useStepsToday()
   const { data: quests } = useWeeklyQuests()
   const { data: metrics } = useBodyMetrics()
+  const { data: nutWeek } = useNutritionWeek()
 
   // asegurar filas base (cuentas seedeadas por script o nuevas)
   useEffect(() => {
@@ -50,6 +51,10 @@ export default function Today() {
   const mm = muscleMemoryState(profile.muscle_memory_start, profile.muscle_memory_days, todayStr())
   const proteinToday = (nutrition || []).reduce((s, n) => s + Number(n.protein_g) * Number(n.qty || 1), 0)
   const proteinGoal = profile.protein_goal_g || 145
+  const kcalToday = (nutrition || []).reduce((s, n) => s + Number(n.kcal || 0) * Number(n.qty || 1), 0)
+  const kcalGoal = profile.target_kcal || 2050
+  const kcalWeek = nutWeek?.kcal || 0
+  const kcalWeekGoal = kcalGoal * 7
   const activeSupps = (supplements || []).filter((s) => s.active)
   const suppsTaken = (supLogs || []).filter((l) => l.taken).length
   const stepGoal = profile.step_goal || 9000
@@ -156,6 +161,26 @@ export default function Today() {
           </div>
         </Card>
       )}
+
+      {/* Calorías */}
+      <Card title="Calorías" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/nutrition')}>Registrar</button>}>
+        <div className="col gap-12">
+          <div className="col gap-4">
+            <div className="row between">
+              <span className="row gap-8" style={{ fontSize: '0.88rem', fontWeight: 600 }}><Flame size={15} color="var(--info)" /> Hoy</span>
+              <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalToday)} / {kcalGoal} kcal</span>
+            </div>
+            <ProgressBar value={kcalToday} max={kcalGoal} variant={kcalToday > kcalGoal ? 'warn' : ''} />
+          </div>
+          <div className="col gap-4">
+            <div className="row between">
+              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Semana (lun–dom)</span>
+              <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalWeek)} / {kcalWeekGoal} kcal</span>
+            </div>
+            <ProgressBar value={kcalWeek} max={kcalWeekGoal} variant={kcalWeek > kcalWeekGoal ? 'warn' : ''} />
+          </div>
+        </div>
+      </Card>
 
       {/* Accesos rápidos */}
       <div className="stat-grid mt-16" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>

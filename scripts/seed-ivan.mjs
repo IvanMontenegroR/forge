@@ -112,6 +112,12 @@ async function main() {
     { name: 'Banana',  protein_g: 1,  kcal: 105, serving: '1 unidad', sort_order: 7 },
     { name: 'Manzana', protein_g: 0,  kcal: 95,  serving: '1 unidad', sort_order: 8 },
     { name: 'Whey',    protein_g: 24, kcal: 120, serving: '1 scoop',  sort_order: 9 },
+    // Bebidas (proteína ~0, foco en kcal)
+    { name: 'Gin tonic (sin azúcar)', protein_g: 0, kcal: 110, serving: '500 ml',        sort_order: 10 },
+    { name: 'Cerveza 330',            protein_g: 0, kcal: 140, serving: '330 ml',        sort_order: 11 },
+    { name: 'Cerveza 500',            protein_g: 0, kcal: 215, serving: '500 ml',        sort_order: 12 },
+    { name: 'Coca-Cola',              protein_g: 0, kcal: 125, serving: '300 ml',        sort_order: 13 },
+    { name: 'Vanilla Ice Latte',      protein_g: 2, kcal: 170, serving: '500 ml (coco)', sort_order: 14 },
   ].map((f) => ({ ...f, user_id: USER_ID }))
 
   await db.from('user_foods').delete().eq('user_id', USER_ID)

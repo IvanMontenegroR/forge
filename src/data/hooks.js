@@ -3,7 +3,7 @@
 // ============================================================
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
-import { todayStr, weekStart } from '../lib/dates'
+import { todayStr, weekStart, addDays } from '../lib/dates'
 import * as db from './db'
 
 export const qk = {
@@ -19,6 +19,7 @@ export const qk = {
   body: (u) => ['body', u],
   foods: (u) => ['foods', u],
   nutrition: (u, d) => ['nutrition', u, d],
+  nutritionWeek: (u, w) => ['nutritionWeek', u, w],
   supplements: (u) => ['supplements', u],
   supLogs: (u, d) => ['supLogs', u, d],
   sleep: (u) => ['sleep', u],
@@ -83,6 +84,23 @@ export function useUserFoods() {
 export function useNutritionToday() {
   const u = useUid(); const d = todayStr()
   return useQuery({ queryKey: qk.nutrition(u, d), queryFn: () => db.getNutritionByDate(u, d), enabled: !!u })
+}
+// Suma kcal y proteína de la semana actual (lun–dom).
+export function useNutritionWeek() {
+  const u = useUid(); const from = weekStart(); const to = addDays(from, 6)
+  return useQuery({
+    queryKey: qk.nutritionWeek(u, from),
+    queryFn: async () => {
+      const rows = await db.getNutritionRange(u, from, to)
+      return rows.reduce((acc, n) => {
+        const qty = Number(n.qty || 1)
+        acc.kcal += Number(n.kcal || 0) * qty
+        acc.protein_g += Number(n.protein_g || 0) * qty
+        return acc
+      }, { kcal: 0, protein_g: 0, from, to })
+    },
+    enabled: !!u,
+  })
 }
 export function useSupplements() {
   const u = useUid()

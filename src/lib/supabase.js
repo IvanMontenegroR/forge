@@ -21,3 +21,4 @@ export const supabase = createClient(
 )
 
 export const COACH_FUNCTION = import.meta.env.VITE_COACH_FUNCTION || 'coach'
+export const MEAL_FUNCTION = import.meta.env.VITE_MEAL_FUNCTION || 'analyze-meal'

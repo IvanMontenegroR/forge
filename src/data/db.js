@@ -160,6 +160,13 @@ export async function getNutritionByDate(userId, date = todayStr()) {
   if (error) throw error
   return data
 }
+// Registros de nutrición en un rango de fechas [from, to] inclusive (YYYY-MM-DD).
+export async function getNutritionRange(userId, from, to) {
+  const { data, error } = await supabase.from('nutrition_logs')
+    .select('*').eq('user_id', userId).gte('date', from).lte('date', to).order('date')
+  if (error) throw error
+  return data
+}
 export async function addNutrition(userId, row) {
   const { data, error } = await supabase.from('nutrition_logs').insert({ ...row, user_id: userId }).select().single()
   if (error) throw error

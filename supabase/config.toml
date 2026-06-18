@@ -6,3 +6,7 @@ project_id = "forge"
 # Verificamos el JWT dentro de la función igualmente; dejarlo en true
 # añade una verificación del gateway de Supabase.
 verify_jwt = true
+
+[functions.analyze-meal]
+# Estimación de calorías por foto. También verifica el JWT internamente.
+verify_jwt = true
