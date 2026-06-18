@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(npm --version)",
+      "Bash(git --version)",
+      "Bash(supabase --version)",
+      "Bash(command -v node)",
+      "Bash(command -v npm)",
+      "Bash(command -v nvm)",
+      "Read(//usr/local/bin/**)",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//Users/ivanmontenegror/**)",
+      "Bash(sw_vers)",
+      "Bash(curl -fsSL -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh)",
+      "Bash(bash)",
+      "Bash(if ! *)",
+      "Bash(git init *)",
+      "Bash(git symbolic-ref *)",
+      "Bash(git add *)",
+      "Bash(git -c user.name=Ivan -c user.email=ivan@blackmont.com.py commit -q -m ' *)"
+    ]
+  }
+}

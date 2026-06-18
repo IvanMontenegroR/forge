@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# build
+dist/
+dist-ssr/
+*.local
+
+# env — NUNCA commitear claves
+.env
+.env.*
+!.env.example
+
+# supabase local
+supabase/.branches
+supabase/.temp
+.supabase/
+
+# editor / os
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.log
+npm-debug.log*
+
+# misc
+.local/

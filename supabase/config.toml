@@ -1,0 +1,8 @@
+# Config mínima del proyecto Supabase (CLI).
+# `project_id` se sobreescribe al hacer `supabase link`.
+project_id = "forge"
+
+[functions.coach]
+# Verificamos el JWT dentro de la función igualmente; dejarlo en true
+# añade una verificación del gateway de Supabase.
+verify_jwt = true
