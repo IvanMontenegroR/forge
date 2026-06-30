@@ -198,7 +198,7 @@ export default function Today() {
       {photoDue && (
         <Card className="mt-16">
           <div className="row gap-12">
-            <span className="lead" style={{ background: 'var(--warn-soft)', color: 'var(--warn)' }}><Camera size={20} /></span>
+            <span className="lead" style={{ width: 44, height: 44, background: 'var(--warn-soft)', color: 'var(--warn)' }}><Camera size={20} /></span>
             <div className="grow">
               <strong>Foto de progreso</strong>
               <p className="muted" style={{ fontSize: '0.82rem' }}>Tocan tus fotos cada {profile.photo_reminder_days || 14} días. Misma luz y pose.</p>
@@ -212,16 +212,16 @@ export default function Today() {
 
 function QuickTile({ icon: Icon, color, label, value, progress, onClick }) {
   return (
-    <button className="card" onClick={onClick} style={{ cursor: 'pointer', textAlign: 'left', padding: 14 }}>
+    <button className="card" onClick={onClick} style={{ cursor: 'pointer', textAlign: 'left', padding: 14, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div className="row between">
         <span className="lead" style={{ width: 36, height: 36, background: 'var(--surface-2)', color }}><Icon size={18} /></span>
         <ChevronRight size={18} color="var(--text-faint)" />
       </div>
-      <div className="mt-12">
+      <div style={{ marginTop: 'auto', paddingTop: 12 }}>
         <div className="num" style={{ fontSize: '1.15rem', fontWeight: 800 }}>{value}</div>
         <div className="faint" style={{ fontSize: '0.78rem', fontWeight: 600 }}>{label}</div>
+        {progress != null && <div className="bar mt-8" style={{ height: 6 }}><span style={{ width: `${Math.min(100, progress * 100)}%`, background: color }} /></div>}
       </div>
-      {progress != null && <div className="bar mt-8" style={{ height: 6 }}><span style={{ width: `${Math.min(100, progress * 100)}%`, background: color }} /></div>}
     </button>
   )
 }

@@ -89,10 +89,10 @@ function NutritionProgress({ profile }) {
 
       {/* Resumen semanal */}
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)', marginBottom: 14 }}>
-        <Card style={{ padding: 14 }}>
+        <Card style={{ padding: 14, display: 'flex', alignItems: 'center' }}>
           <Stat label="Días con proteína OK" value={`${proteinDaysOk}/${logged.length || 0}`} color="var(--success)" />
         </Card>
-        <Card style={{ padding: 14 }}>
+        <Card style={{ padding: 14, display: 'flex', alignItems: 'center' }}>
           <Stat label="Días excedido en kcal" value={`${kcalDaysOver}/${logged.length || 0}`} color={kcalDaysOver ? 'var(--warn)' : 'var(--text)'} />
         </Card>
       </div>
@@ -199,8 +199,8 @@ function TrainingProgress({ profile }) {
   return (
     <>
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)', marginBottom: 14 }}>
-        <Card style={{ padding: 14 }}><Stat label="Sesiones completadas" value={completedCount} /></Card>
-        <Card style={{ padding: 14 }}><Stat label="Volumen esta semana" value={weekly.at(-1)?.Volumen ?? 0} suffix="kg" /></Card>
+        <Card style={{ padding: 14, display: 'flex', alignItems: 'center' }}><Stat label="Sesiones completadas" value={completedCount} /></Card>
+        <Card style={{ padding: 14, display: 'flex', alignItems: 'center' }}><Stat label="Volumen esta semana" value={weekly.at(-1)?.Volumen ?? 0} suffix="kg" /></Card>
       </div>
 
       <Card title="Volumen semanal">

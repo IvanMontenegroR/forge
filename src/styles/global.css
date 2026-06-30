@@ -129,6 +129,9 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 .card + .card { margin-top: 14px; }
 .card-title { display: flex; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-faint); margin-bottom: 12px; }
 
+/* Recuadro de ícono (centra el ícono en todos lados, no solo en list-row) */
+.lead { display: grid; place-items: center; border-radius: 12px; flex-shrink: 0; }
+
 /* ---------- Buttons ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -194,7 +197,9 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 .stat { display: flex; flex-direction: column; gap: 2px; }
 .stat .v { font-size: 1.5rem; font-weight: 800; font-family: var(--ff-num); }
 .stat .l { font-size: 0.78rem; color: var(--text-faint); font-weight: 600; }
-.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 12px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+/* Tarjetas dentro de una grilla: misma altura y ocupan toda la celda */
+.stat-grid > .card { height: 100%; }
 
 /* ---------- Bottom nav ---------- */
 .bottom-nav {
