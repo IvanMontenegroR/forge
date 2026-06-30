@@ -212,7 +212,7 @@ export default function Today() {
 
 function QuickTile({ icon: Icon, color, label, value, progress, onClick }) {
   return (
-    <button className="card" onClick={onClick} style={{ cursor: 'pointer', textAlign: 'left', padding: 14, height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <button className="card" onClick={onClick} style={{ cursor: 'pointer', textAlign: 'left', padding: 14, display: 'flex', flexDirection: 'column' }}>
       <div className="row between">
         <span className="lead" style={{ width: 36, height: 36, background: 'var(--surface-2)', color }}><Icon size={18} /></span>
         <ChevronRight size={18} color="var(--text-faint)" />
@@ -220,7 +220,10 @@ function QuickTile({ icon: Icon, color, label, value, progress, onClick }) {
       <div style={{ marginTop: 'auto', paddingTop: 12 }}>
         <div className="num" style={{ fontSize: '1.15rem', fontWeight: 800 }}>{value}</div>
         <div className="faint" style={{ fontSize: '0.78rem', fontWeight: 600 }}>{label}</div>
-        {progress != null && <div className="bar mt-8" style={{ height: 6 }}><span style={{ width: `${Math.min(100, progress * 100)}%`, background: color }} /></div>}
+      </div>
+      {/* slot de barra siempre presente (oculto si no hay progreso) → todas las tiles igual alto */}
+      <div className="bar mt-8" style={{ height: 6, visibility: progress != null ? 'visible' : 'hidden' }}>
+        <span style={{ width: `${Math.min(100, (progress || 0) * 100)}%`, background: color }} />
       </div>
     </button>
   )
