@@ -34,6 +34,20 @@ export function weekStart(dateStr = todayStr()) {
   return todayStr(d)
 }
 
+// Primer y último día del mes de la fecha dada (YYYY-MM-DD)
+export function monthStart(dateStr = todayStr()) {
+  return dateStr.slice(0, 8) + '01'
+}
+export function monthEnd(dateStr = todayStr()) {
+  const d = new Date(dateStr + 'T00:00:00')
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+  return todayStr(last)
+}
+export function monthLabel(dateStr = todayStr()) {
+  const d = new Date(dateStr + 'T00:00:00')
+  return d.toLocaleDateString('es', { month: 'long', year: 'numeric' })
+}
+
 export const WEEKDAY_NAMES = ['', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
 export const WEEKDAY_LONG = ['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 

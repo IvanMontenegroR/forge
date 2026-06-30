@@ -20,6 +20,7 @@ export const qk = {
   foods: (u) => ['foods', u],
   nutrition: (u, d) => ['nutrition', u, d],
   nutritionWeek: (u, w) => ['nutritionWeek', u, w],
+  nutritionRange: (u, a, b) => ['nutritionRange', u, a, b],
   supplements: (u) => ['supplements', u],
   supLogs: (u, d) => ['supLogs', u, d],
   sleep: (u) => ['sleep', u],
@@ -84,6 +85,15 @@ export function useUserFoods() {
 export function useNutritionToday() {
   const u = useUid(); const d = todayStr()
   return useQuery({ queryKey: qk.nutrition(u, d), queryFn: () => db.getNutritionByDate(u, d), enabled: !!u })
+}
+// Registros de nutrición en un rango arbitrario [from, to] (YYYY-MM-DD).
+export function useNutritionRange(from, to) {
+  const u = useUid()
+  return useQuery({
+    queryKey: qk.nutritionRange(u, from, to),
+    queryFn: () => db.getNutritionRange(u, from, to),
+    enabled: !!u && !!from && !!to,
+  })
 }
 // Suma kcal y proteína de la semana actual (lun–dom).
 export function useNutritionWeek() {
