@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { LogOut, Save, Plus, Trash2, Check } from 'lucide-react'
+import { LogOut, Save, Plus, Trash2, Check, ShieldCheck, ChevronRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile, usePrograms, useUserFoods, useSupplements, qk } from '../data/hooks'
 import { supabase } from '../lib/supabase'
@@ -9,6 +10,7 @@ import { WEEKDAY_NAMES } from '../lib/dates'
 import { Card, Spinner } from '../components/ui'
 
 export default function Profile() {
+  const navigate = useNavigate()
   const { user, signOut } = useAuth()
   const qc = useQueryClient()
   const { data: profile } = useProfile()
@@ -92,6 +94,19 @@ export default function Profile() {
 
       <FoodEditor foods={foods} userId={user.id} qc={qc} />
       <SupplementEditor supps={supps} userId={user.id} qc={qc} />
+
+      {profile.role === 'admin' && (
+        <Card title="Administración">
+          <button className="list-row" onClick={() => navigate('/admin')} style={{ width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', padding: '6px 0' }}>
+            <span className="lead" style={{ width: 36, height: 36, background: 'var(--accent-soft)', color: 'var(--accent)' }}><ShieldCheck size={18} /></span>
+            <div className="grow">
+              <strong style={{ fontSize: '0.95rem' }}>Registro y accesos</strong>
+              <span className="faint" style={{ display: 'block', fontSize: '0.8rem' }}>Gestioná quién puede registrarse</span>
+            </div>
+            <ChevronRight size={18} color="var(--text-faint)" />
+          </button>
+        </Card>
+      )}
 
       <Card title="Cuenta">
         <p className="muted" style={{ fontSize: '0.86rem' }}>{user.email}</p>

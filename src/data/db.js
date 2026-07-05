@@ -244,4 +244,23 @@ export async function getStepsByDate(userId, date = todayStr()) {
   return data.reduce((s, r) => s + (r.steps || 0), 0)
 }
 
+// ---------- Admin: allowlist de registro ----------
+export async function listAllowedEmails() {
+  const { data, error } = await supabase.from('allowed_emails').select('*').order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+export async function addAllowedEmail(email, note) {
+  const clean = (email || '').trim().toLowerCase()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data, error } = await supabase.from('allowed_emails')
+    .insert({ email: clean, note: note || null, added_by: user?.id || null }).select().single()
+  if (error) throw error
+  return data
+}
+export async function removeAllowedEmail(email) {
+  const { error } = await supabase.from('allowed_emails').delete().eq('email', email)
+  if (error) throw error
+}
+
 export { uid }

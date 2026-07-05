@@ -28,6 +28,7 @@ export const qk = {
   sleep: (u) => ['sleep', u],
   cardio: (u) => ['cardio', u],
   steps: (u, d) => ['steps', u, d],
+  allowedEmails: () => ['allowedEmails'],
 }
 
 function useUid() {
@@ -129,6 +130,11 @@ export function useStepsToday() {
   const u = useUid(); const d = todayStr()
   return useQuery({ queryKey: qk.steps(u, d), queryFn: () => db.getStepsByDate(u, d), enabled: !!u })
 }
+// ---------- Admin ----------
+export function useAllowedEmails(enabled = true) {
+  return useQuery({ queryKey: qk.allowedEmails(), queryFn: db.listAllowedEmails, enabled })
+}
+
 // ---------- Rachas (calculadas al vuelo) ----------
 // Racha de nutrición: un día cuenta si el total de kcal quedó ≤ objetivo.
 export function useNutritionStreak() {

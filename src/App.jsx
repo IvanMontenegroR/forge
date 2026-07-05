@@ -19,6 +19,7 @@ import Cardio from './pages/Cardio'
 import Coach from './pages/Coach'
 import Rachas from './pages/Rachas'
 import Profile from './pages/Profile'
+import Admin from './pages/Admin'
 
 export default function App() {
   const { user, loading, recovery } = useAuth()
@@ -50,6 +51,7 @@ function AuthedApp() {
         <Route path="/coach" element={<Coach />} />
         <Route path="/rachas" element={<Rachas />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/admin" element={<Admin />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -20,7 +20,13 @@ export default function Auth() {
           email, password,
           options: { data: { full_name: name } },
         })
-        if (error) throw error
+        if (error) {
+          // El registro está restringido por allowlist: mensaje claro.
+          const blocked = /no autorizado|not authorized|database error|saving new user|allowlist/i.test(error.message || '')
+          throw new Error(blocked
+            ? 'Tu email no está autorizado para registrarte. Pedile al administrador que te dé acceso.'
+            : error.message)
+        }
         setMsg('Cuenta creada. Si tu proyecto pide confirmación por email, revisá tu casilla. Si no, ya podés entrar.')
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
