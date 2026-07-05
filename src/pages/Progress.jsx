@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { LineChart, Line, BarChart, Bar, Cell, ReferenceLine, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Trophy, Dumbbell, Beef, Flame, Check, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   useProfile, useProgramDays, useExerciseHistory, useSessions,
@@ -98,24 +98,6 @@ function NutritionProgress({ profile }) {
         </Card>
       </div>
 
-      <Card title="Calorías de la semana">
-        {isLoading ? <Spinner /> : (
-          <div style={{ height: 170 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={days.map((d) => ({ day: WEEKDAY_NAMES[d.wd], kcal: Math.round(d.kcal), over: d.kcalOver }))} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-                <XAxis dataKey="day" stroke="var(--text-faint)" fontSize={11} />
-                <YAxis stroke="var(--text-faint)" fontSize={11} />
-                <Tooltip contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10 }} cursor={{ fill: 'var(--surface-2)' }} formatter={(v) => [`${v} kcal`, 'Calorías']} />
-                <ReferenceLine y={kcalGoal} stroke="var(--text-faint)" strokeDasharray="4 4" label={{ value: `meta ${kcalGoal}`, position: 'insideTopRight', fill: 'var(--text-faint)', fontSize: 10 }} />
-                <Bar dataKey="kcal" radius={[6, 6, 0, 0]}>
-                  {days.map((d) => <Cell key={d.date} fill={d.kcalOver ? 'var(--warn)' : 'var(--info)'} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </Card>
-
       <Card title="Semana (lun–dom)">
         {isLoading ? <Spinner /> : (
           <div className="col" style={{ gap: 14 }}>
@@ -161,8 +143,20 @@ function NutritionProgress({ profile }) {
                 </div>
               )
             })}
-            <div className="faint num center" style={{ fontSize: '0.8rem', marginTop: 2 }}>
-              Total semana: {Math.round(weekProtein)} g proteína · {Math.round(weekKcal)} / {kcalGoal * 7} kcal
+            <div className="col gap-6" style={{ marginTop: 4, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <div className="faint num center" style={{ fontSize: '0.8rem' }}>
+                Total semana: {Math.round(weekProtein)} g proteína · {Math.round(weekKcal)} / {kcalGoal * 7} kcal
+              </div>
+              <div className="row between" style={{ fontSize: '0.78rem', marginTop: 4 }}>
+                <span className="row gap-4"><Flame size={12} color="var(--info)" /> Calorías de la semana</span>
+                <span className="faint num">{Math.round(weekKcal)}/{kcalGoal * 7}</span>
+              </div>
+              <ProgressBar value={weekKcal} max={kcalGoal * 7} variant={weekKcal > kcalGoal * 7 ? 'warn' : 'info'} />
+              <div className="row between" style={{ fontSize: '0.78rem', marginTop: 4 }}>
+                <span className="row gap-4"><Beef size={12} color="var(--danger)" /> Proteína de la semana</span>
+                <span className="faint num">{Math.round(weekProtein)}/{proteinGoal * 7} g</span>
+              </div>
+              <ProgressBar value={weekProtein} max={proteinGoal * 7} variant={weekProtein >= proteinGoal * 7 ? 'success' : ''} />
             </div>
           </div>
         )}
