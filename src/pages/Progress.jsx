@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, BarChart, Bar, Cell, ReferenceLine, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Trophy, Dumbbell, Beef, Flame, Check, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   useProfile, useProgramDays, useExerciseHistory, useSessions,
@@ -97,6 +97,24 @@ function NutritionProgress({ profile }) {
           <Stat label="Días excedido en kcal" value={`${kcalDaysOver}/${logged.length || 0}`} color={kcalDaysOver ? 'var(--warn)' : 'var(--text)'} />
         </Card>
       </div>
+
+      <Card title="Calorías de la semana">
+        {isLoading ? <Spinner /> : (
+          <div style={{ height: 170 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={days.map((d) => ({ day: WEEKDAY_NAMES[d.wd], kcal: Math.round(d.kcal), over: d.kcalOver }))} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                <XAxis dataKey="day" stroke="var(--text-faint)" fontSize={11} />
+                <YAxis stroke="var(--text-faint)" fontSize={11} />
+                <Tooltip contentStyle={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10 }} cursor={{ fill: 'var(--surface-2)' }} formatter={(v) => [`${v} kcal`, 'Calorías']} />
+                <ReferenceLine y={kcalGoal} stroke="var(--text-faint)" strokeDasharray="4 4" label={{ value: `meta ${kcalGoal}`, position: 'insideTopRight', fill: 'var(--text-faint)', fontSize: 10 }} />
+                <Bar dataKey="kcal" radius={[6, 6, 0, 0]}>
+                  {days.map((d) => <Cell key={d.date} fill={d.kcalOver ? 'var(--warn)' : 'var(--info)'} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
 
       <Card title="Semana (lun–dom)">
         {isLoading ? <Spinner /> : (

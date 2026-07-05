@@ -61,8 +61,8 @@ export default function Today() {
       {/* Rachas */}
       <Card title="Rachas" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/rachas')}>Ver</button>}>
         <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
-          <StreakTile icon={Dumbbell} color="var(--accent)" label="Entrenamiento" current={train.current} longest={train.longest} />
           <StreakTile icon={Beef} color="var(--danger)" label="Nutrición" current={nut.current} longest={nut.longest} />
+          <StreakTile icon={Dumbbell} color="var(--accent)" label="Entrenamiento" current={train.current} longest={train.longest} />
         </div>
         <p className="faint mt-12" style={{ fontSize: '0.76rem' }}>Podés fallar 2 días por semana sin cortar la racha. Nutrición cuenta días bajo tu techo de {kcalGoal} kcal.</p>
       </Card>

@@ -14,12 +14,12 @@ export default function Rachas() {
       <div className="page-head"><p className="eyebrow">Rachas</p><h1>Constancia</h1></div>
 
       <StreakCard
-        title="Entrenamiento" icon={Dumbbell} color="var(--accent)" streak={train}
-        caption="Cuenta tus días programados (lun/mar/vie). Los descansos no rompen la racha; podés faltar hasta 2 días programados por semana."
-      />
-      <StreakCard
         title="Nutrición" icon={Beef} color="var(--danger)" streak={nut}
         caption={`Días en los que te quedaste bajo tu techo de ${profile.target_kcal || 2050} kcal. Podés excederte hasta 2 días por semana sin cortarla.`}
+      />
+      <StreakCard
+        title="Entrenamiento" icon={Dumbbell} color="var(--accent)" streak={train}
+        caption="Cuenta tus días programados (lun/mar/vie). Los descansos no rompen la racha; podés faltar hasta 2 días programados por semana."
       />
 
       <div className="row gap-16 mt-8" style={{ justifyContent: 'center', fontSize: '0.74rem' }}>
