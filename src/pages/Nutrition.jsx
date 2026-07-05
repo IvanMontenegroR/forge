@@ -200,7 +200,7 @@ export default function Nutrition() {
             {MEAL_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </div>
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{ display: 'none' }} />
+        <input ref={fileRef} type="file" accept="image/*" onChange={onPhoto} style={{ display: 'none' }} />
         {photoBusy && <div className="mt-12"><Spinner label="Analizando la foto…" /></div>}
         {photoErr && (
           <div className="pill" style={{ color: 'var(--danger)', background: 'var(--danger-soft)', width: '100%', justifyContent: 'flex-start', marginTop: 12 }}>
