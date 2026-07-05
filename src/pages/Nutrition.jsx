@@ -47,7 +47,8 @@ export default function Nutrition() {
   const [custom, setCustom] = useState({ name: '', protein_g: '', kcal: '', qty: 1 })
   const [showCustom, setShowCustom] = useState(false)
   const fileRef = useRef(null)
-  const modeRef = useRef('review')
+  const [photoFiles, setPhotoFiles] = useState([])
+  const [photoNote, setPhotoNote] = useState('')
   const [photoBusy, setPhotoBusy] = useState(false)
   const [photoErr, setPhotoErr] = useState(null)
   const [review, setReview] = useState(null) // { items:[{name,kcal,protein_g}] }
@@ -93,27 +94,36 @@ export default function Nutrition() {
     invalidate()
   }
 
-  function pickPhoto(mode) {
-    modeRef.current = mode
-    setPhotoErr(null)
-    fileRef.current?.click()
+  function resetMealInputs() {
+    setPhotoFiles([]); setPhotoNote('')
   }
 
-  async function onPhoto(e) {
-    const files = Array.from(e.target.files || [])
-    e.target.value = '' // permite re-elegir las mismas fotos
-    if (!files.length) return
+  function onFilesSelected(e) {
+    setPhotoFiles(Array.from(e.target.files || []))
+    e.target.value = '' // permite re-elegir las mismas
+    setPhotoErr(null)
+  }
+
+  async function analyzeMeal(mode) {
+    const files = photoFiles
+    const note = photoNote.trim()
+    if (!files.length && !note) { setPhotoErr('Agregá una foto o una descripción.'); return }
     setPhotoBusy(true); setPhotoErr(null)
     const allItems = []
     const notes = []
     let failed = 0
-    try {
-      for (const file of files) {
-        try {
+    // Con fotos: una llamada por foto (la descripción va como contexto en cada una).
+    // Sin fotos: una sola llamada de texto.
+    const calls = files.length
+      ? files.map((file) => async () => {
           const { base64, media_type } = await fileToResizedBase64(file)
-          const { data, error } = await supabase.functions.invoke(MEAL_FUNCTION, {
-            body: { image: base64, media_type, model: photoModel },
-          })
+          return supabase.functions.invoke(MEAL_FUNCTION, { body: { image: base64, media_type, note, model: photoModel } })
+        })
+      : [async () => supabase.functions.invoke(MEAL_FUNCTION, { body: { note, model: photoModel } })]
+    try {
+      for (const call of calls) {
+        try {
+          const { data, error } = await call()
           if (error) throw error
           if (data?.error) throw new Error(data.error)
           const items = (data.items || []).map((it) => ({
@@ -125,15 +135,16 @@ export default function Nutrition() {
           if (data.note) notes.push(data.note)
         } catch { failed++ }
       }
-      if (!allItems.length) throw new Error('No pude identificar comida en las fotos. Probá con otras tomas.')
-      if (modeRef.current === 'save') {
+      if (!allItems.length) throw new Error('No pude identificar comida. Probá con otra foto o descripción.')
+      if (mode === 'save') {
         for (const it of allItems) await add(it)
+        resetMealInputs()
       } else {
         setReview({ items: allItems, note: notes.join(' · ') })
       }
-      if (failed) setPhotoErr(`${failed} de ${files.length} foto(s) no se pudieron analizar; el resto sí.`)
+      if (failed && files.length) setPhotoErr(`${failed} de ${files.length} foto(s) no se pudieron analizar; el resto sí.`)
     } catch (err) {
-      setPhotoErr(err.message || 'No se pudo analizar la foto.')
+      setPhotoErr(err.message || 'No se pudo analizar.')
     } finally {
       setPhotoBusy(false)
     }
@@ -145,6 +156,7 @@ export default function Nutrition() {
       await add({ name: it.name, protein_g: Number(it.protein_g) || 0, kcal: Number(it.kcal) || null })
     }
     setReview(null)
+    resetMealInputs()
   }
 
   function editItem(i, patch) {
@@ -191,18 +203,23 @@ export default function Nutrition() {
         </div>
       </Card>
 
-      <Card title="Foto del plato">
+      <Card title="Comida por foto o descripción">
         <p className="muted" style={{ fontSize: '0.86rem' }}>
-          Sacá o subí una o varias fotos y Claude estima calorías y proteína de cada una.
+          Sacá o subí una o varias fotos, escribí una descripción, o ambas para que se complementen. Cada plato queda como un solo item.
         </p>
-        <div className="row gap-8 mt-12">
-          <button className="btn btn-primary grow" onClick={() => pickPhoto('review')} disabled={photoBusy}>
-            <Sparkles size={16} /> Analizar y revisar
+
+        <button className="btn btn-ghost btn-block mt-12" onClick={() => fileRef.current?.click()} disabled={photoBusy}>
+          <Camera size={16} /> {photoFiles.length ? `${photoFiles.length} foto${photoFiles.length > 1 ? 's' : ''} · cambiar` : 'Sacar o subir foto(s)'}
+        </button>
+        {photoFiles.length > 0 && (
+          <button className="btn btn-sm btn-block mt-8" style={{ color: 'var(--danger)', background: 'transparent', border: 'none' }} onClick={() => setPhotoFiles([])}>
+            <X size={14} /> Quitar fotos
           </button>
-          <button className="btn btn-ghost grow" onClick={() => pickPhoto('save')} disabled={photoBusy}>
-            <Camera size={16} /> Analizar y guardar
-          </button>
-        </div>
+        )}
+
+        <textarea className="input mt-12" rows={2} placeholder="Descripción (opcional): ej. milanesa con puré + 1 vaso de coca"
+          value={photoNote} onChange={(e) => setPhotoNote(e.target.value)} />
+
         <div className="field mt-12" style={{ marginBottom: 0 }}>
           <label htmlFor="meal-model" style={{ fontSize: '0.78rem' }}>Modelo de análisis</label>
           <select id="meal-model" className="select input" value={photoModel}
@@ -210,8 +227,18 @@ export default function Nutrition() {
             {MEAL_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </div>
-        <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPhoto} style={{ display: 'none' }} />
-        {photoBusy && <div className="mt-12"><Spinner label="Analizando las fotos…" /></div>}
+
+        <div className="row gap-8 mt-12">
+          <button className="btn btn-primary grow" onClick={() => analyzeMeal('review')} disabled={photoBusy}>
+            <Sparkles size={16} /> Analizar y revisar
+          </button>
+          <button className="btn btn-ghost grow" onClick={() => analyzeMeal('save')} disabled={photoBusy}>
+            <Check size={16} /> Analizar y guardar
+          </button>
+        </div>
+
+        <input ref={fileRef} type="file" accept="image/*" multiple onChange={onFilesSelected} style={{ display: 'none' }} />
+        {photoBusy && <div className="mt-12"><Spinner label="Analizando…" /></div>}
         {photoErr && (
           <div className="pill" style={{ color: 'var(--danger)', background: 'var(--danger-soft)', width: '100%', justifyContent: 'flex-start', marginTop: 12 }}>
             <AlertCircle size={14} /> {photoErr}

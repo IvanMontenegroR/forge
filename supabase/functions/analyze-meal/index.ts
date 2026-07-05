@@ -35,9 +35,12 @@ Devolvé SOLO un objeto JSON válido (sin texto extra, sin markdown, sin backtic
 {"items":[{"name":"string en español","kcal":number,"protein_g":number}],"total_kcal":number,"total_protein_g":number,"note":"string corto"}
 
 Reglas:
-- Un item por alimento/bebida visible. Estimá la porción por lo que se ve en el plato/vaso.
-- kcal y protein_g son enteros razonables por la porción mostrada (no por 100 g).
+- Un item por PLATO/comida o por bebida. Agrupá TODOS los ingredientes de un mismo plato en UN solo item con su total; NO desgloses por ingrediente.
+- Nombrá el item por el plato (ej. "Milanesa con puré"), no por sus componentes.
+- Si hay platos o bebidas claramente distintos, usá un item por cada uno.
+- kcal y protein_g son enteros razonables por la porción mostrada o descrita (no por 100 g).
 - total_kcal y total_protein_g son la suma de los items.
+- Puede venir una foto, una descripción de texto, o ambas: combiná toda la info para estimar mejor.
 - "note": una frase breve con supuestos o el nivel de confianza.
 - Si no hay comida identificable, devolvé items vacío y explicá en "note".
 - Las estimaciones son aproximadas; no inventes precisión falsa.`
@@ -82,16 +85,20 @@ Deno.serve(async (req: Request) => {
 
   const image = (body.image || '').toString()
   const mediaType = (body.media_type || 'image/jpeg').toString()
-  if (!image) return json({ error: 'Falta la imagen.' }, 400)
-  if (!ALLOWED_MEDIA.includes(mediaType)) return json({ error: `Formato no soportado: ${mediaType}` }, 400)
+  const note = (body.note || '').toString().slice(0, 800)
+  if (!image && !note) return json({ error: 'Falta una foto o una descripción.' }, 400)
+  if (image && !ALLOWED_MEDIA.includes(mediaType)) return json({ error: `Formato no soportado: ${mediaType}` }, 400)
 
   const model = body.model || Deno.env.get('CLAUDE_MODEL') || DEFAULT_MODEL
-  const note = (body.note || '').toString().slice(0, 500)
 
-  const userContent: unknown[] = [
-    { type: 'image', source: { type: 'base64', media_type: mediaType, data: image } },
-    { type: 'text', text: note ? `Contexto del usuario: ${note}\nEstimá calorías y proteína.` : 'Estimá calorías y proteína de esta comida.' },
-  ]
+  const userContent: unknown[] = []
+  if (image) userContent.push({ type: 'image', source: { type: 'base64', media_type: mediaType, data: image } })
+  userContent.push({
+    type: 'text',
+    text: image
+      ? (note ? `Analizá la comida de la foto. Contexto del usuario: ${note}\nEstimá calorías y proteína.` : 'Estimá calorías y proteína de la comida de la foto.')
+      : `Estimá calorías y proteína de esta comida descrita por el usuario:\n${note}`,
+  })
 
   // ── Llamada a Claude (visión) ──
   try {
