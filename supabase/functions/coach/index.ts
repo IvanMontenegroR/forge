@@ -15,7 +15,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 
-const DEFAULT_MODEL = 'claude-sonnet-4-6'
+const DEFAULT_MODEL = 'claude-sonnet-5'
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 
 const corsHeaders = {

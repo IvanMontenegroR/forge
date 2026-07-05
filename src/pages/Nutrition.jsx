@@ -8,6 +8,13 @@ import * as db from '../data/db'
 import { todayStr, weekStart } from '../lib/dates'
 import { Card, Ring, Spinner } from '../components/ui'
 
+const MEAL_MODELS = [
+  { id: 'claude-opus-4-8', label: 'Opus 4.8 (más preciso)' },
+  { id: 'claude-sonnet-5', label: 'Sonnet 5 (rápido)' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5 (económico)' },
+]
+const MEAL_MODEL_KEY = 'forge.meal.model'
+
 // Redimensiona la imagen a un máximo razonable y devuelve { base64, media_type }
 // para que el payload de la Edge Function quede liviano y confiable.
 function fileToResizedBase64(file, maxSide = 1280, quality = 0.8) {
@@ -44,6 +51,7 @@ export default function Nutrition() {
   const [photoBusy, setPhotoBusy] = useState(false)
   const [photoErr, setPhotoErr] = useState(null)
   const [review, setReview] = useState(null) // { items:[{name,kcal,protein_g}] }
+  const [photoModel, setPhotoModel] = useState(localStorage.getItem(MEAL_MODEL_KEY) || MEAL_MODELS[0].id)
 
   if (!profile) return <div className="page"><Spinner /></div>
 
@@ -99,7 +107,7 @@ export default function Nutrition() {
     try {
       const { base64, media_type } = await fileToResizedBase64(file)
       const { data, error } = await supabase.functions.invoke(MEAL_FUNCTION, {
-        body: { image: base64, media_type },
+        body: { image: base64, media_type, model: photoModel },
       })
       if (error) throw error
       if (data?.error) throw new Error(data.error)
@@ -184,6 +192,13 @@ export default function Nutrition() {
           <button className="btn btn-ghost grow" onClick={() => pickPhoto('save')} disabled={photoBusy}>
             <Camera size={16} /> Analizar y guardar
           </button>
+        </div>
+        <div className="field mt-12" style={{ marginBottom: 0 }}>
+          <label htmlFor="meal-model" style={{ fontSize: '0.78rem' }}>Modelo de análisis</label>
+          <select id="meal-model" className="select input" value={photoModel}
+            onChange={(e) => { setPhotoModel(e.target.value); localStorage.setItem(MEAL_MODEL_KEY, e.target.value) }}>
+            {MEAL_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+          </select>
         </div>
         <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPhoto} style={{ display: 'none' }} />
         {photoBusy && <div className="mt-12"><Spinner label="Analizando la foto…" /></div>}

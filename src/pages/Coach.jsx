@@ -8,7 +8,7 @@ import { todayStr } from '../lib/dates'
 import { Card, Spinner } from '../components/ui'
 
 const MODELS = [
-  { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6 (recomendado)' },
+  { id: 'claude-sonnet-5', label: 'Sonnet 5 (recomendado)' },
   { id: 'claude-opus-4-8', label: 'Opus 4.8 (más profundo)' },
   { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5 (rápido)' },
 ]
