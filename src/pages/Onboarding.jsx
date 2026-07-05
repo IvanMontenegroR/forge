@@ -4,8 +4,8 @@ import { Flame, Check } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile, usePrograms } from '../data/hooks'
 import * as db from '../data/db'
-import { ensureStreaks, ensureWeeklyQuests, seedNewUserDefaults } from '../data/bootstrap'
-import { todayStr, WEEKDAY_NAMES } from '../lib/dates'
+import { seedNewUserDefaults } from '../data/bootstrap'
+import { WEEKDAY_NAMES } from '../lib/dates'
 import { Spinner } from '../components/ui'
 
 const GOALS = [
@@ -46,13 +46,9 @@ export default function Onboarding() {
         equipment,
         active_program_id: chosenProgram,
         protein_goal_g: Number(protein) || 140,
-        muscle_memory_start: todayStr(),
         onboarded: true,
       })
       await seedNewUserDefaults(user.id)
-      await ensureStreaks(user.id)
-      const fresh = await db.getProfile(user.id)
-      await ensureWeeklyQuests(user.id, fresh)
       qc.invalidateQueries()
     } finally {
       setBusy(false)

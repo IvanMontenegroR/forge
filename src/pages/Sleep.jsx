@@ -3,16 +3,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Moon, Check, Star } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile, useSleep, qk } from '../data/hooks'
-import { useAwards } from '../data/awards'
 import * as db from '../data/db'
 import { todayStr, prettyDate } from '../lib/dates'
-import { XP } from '../lib/gamification'
 import { Card, Stepper, Spinner } from '../components/ui'
 
 export default function Sleep() {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const { award, grantBadge } = useAwards()
   const { data: profile } = useProfile()
   const { data: logs } = useSleep()
 
@@ -26,13 +23,6 @@ export default function Sleep() {
   async function save() {
     await db.upsertSleep(user.id, { date: todayStr(), hours: Number(hours), quality: Number(quality) })
     qc.invalidateQueries({ queryKey: qk.sleep(user.id) })
-    if (Number(hours) >= goal) {
-      await award('sleep_goal', XP.sleep_goal, 'Dormiste tu meta', { oncePerDay: true })
-      // semana de buen descanso: 7 días seguidos cumpliendo
-      const recent = await db.listSleep(user.id, 7)
-      const ok = recent.length >= 7 && recent.every((r) => Number(r.hours) >= goal)
-      if (ok) await grantBadge('sleep_week')
-    }
   }
 
   return (

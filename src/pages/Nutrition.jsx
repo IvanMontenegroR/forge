@@ -3,11 +3,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Plus, X, Beef, Check, Camera, Flame, Sparkles, AlertCircle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile, useUserFoods, useNutritionToday, qk } from '../data/hooks'
-import { useAwards } from '../data/awards'
 import { supabase, MEAL_FUNCTION } from '../lib/supabase'
 import * as db from '../data/db'
 import { todayStr, weekStart } from '../lib/dates'
-import { XP } from '../lib/gamification'
 import { Card, Ring, Spinner } from '../components/ui'
 
 // Redimensiona la imagen a un máximo razonable y devuelve { base64, media_type }
@@ -36,7 +34,6 @@ function fileToResizedBase64(file, maxSide = 1280, quality = 0.8) {
 export default function Nutrition() {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const { award, bumpQuest, grantBadge } = useAwards()
   const { data: profile } = useProfile()
   const { data: foods } = useUserFoods()
   const { data: logs } = useNutritionToday()
@@ -71,15 +68,6 @@ export default function Nutrition() {
       protein_g: Number(food.protein_g) || 0, kcal: food.kcal ? Number(food.kcal) : null, qty,
     })
     invalidate()
-    // ¿se cruzó la meta de proteína con este registro?
-    const after = total + (Number(food.protein_g) || 0) * qty
-    if (after >= goal && !reached) {
-      await award('protein_goal', XP.protein_goal, 'Meta de proteína cumplida', { oncePerDay: true })
-      await bumpQuest('protein', 1)
-      const st = await db.bumpDailyStreak(user.id, 'protein')
-      qc.invalidateQueries({ queryKey: qk.streaks(user.id) })
-      if (st?.current_count >= 7) await grantBadge('protein_week')
-    }
   }
 
   async function addCustom() {

@@ -3,9 +3,7 @@ import { Sparkles, AlertCircle } from 'lucide-react'
 import { supabase, COACH_FUNCTION } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../data/hooks'
-import { useAwards } from '../data/awards'
 import * as db from '../data/db'
-import { muscleMemoryState } from '../lib/gamification'
 import { todayStr } from '../lib/dates'
 import { Card, Spinner } from '../components/ui'
 
@@ -19,7 +17,6 @@ const MODEL_KEY = 'forge.coach.model'
 export default function Coach() {
   const { user } = useAuth()
   const { data: profile } = useProfile()
-  const { grantBadge } = useAwards()
   const [question, setQuestion] = useState('')
   const [model, setModel] = useState(localStorage.getItem(MODEL_KEY) || MODELS[0].id)
   const [loading, setLoading] = useState(false)
@@ -27,12 +24,11 @@ export default function Coach() {
   const [error, setError] = useState(null)
 
   async function buildPayload() {
-    const [sessions, metrics, sleep, cardio, streaks, foodsToday] = await Promise.all([
+    const [sessions, metrics, sleep, cardio, foodsToday] = await Promise.all([
       db.listSessions(user.id, 8),
       db.listBodyMetrics(user.id),
       db.listSleep(user.id, 7),
       db.listCardio(user.id, 10),
-      db.getStreaks(user.id),
       db.getNutritionByDate(user.id, todayStr()),
     ])
     const completed = sessions.filter((s) => s.status === 'completed').slice(0, 4)
@@ -44,19 +40,18 @@ export default function Coach() {
         sets: sets.filter((x) => x.done && !x.is_warmup).map((x) => ({ ex: x.exercise_id, w: x.weight_kg, reps: x.reps })),
       })
     }
-    const mm = muscleMemoryState(profile.muscle_memory_start, profile.muscle_memory_days, todayStr())
     return {
       perfil: {
         objetivo: profile.goal, meta_proteina_g: profile.protein_goal_g,
-        meta_pasos: profile.step_goal, meta_sueno_h: profile.sleep_goal_hours,
-        dias_entreno: profile.training_weekdays, muscle_memory_dias_restantes: mm.daysLeft,
+        meta_kcal: profile.target_kcal, meta_pasos: profile.step_goal,
+        meta_sueno_h: profile.sleep_goal_hours, dias_entreno: profile.training_weekdays,
       },
       sesiones_recientes: sessionDetails,
       metricas: metrics.slice(-5),
       sueno: sleep,
       cardio,
-      rachas: streaks.map((s) => ({ tipo: s.kind, actual: s.current_count, mejor: s.longest_count })),
       proteina_hoy_g: foodsToday.reduce((a, n) => a + Number(n.protein_g) * Number(n.qty || 1), 0),
+      calorias_hoy: foodsToday.reduce((a, n) => a + Number(n.kcal || 0) * Number(n.qty || 1), 0),
     }
   }
 
@@ -70,7 +65,6 @@ export default function Coach() {
       if (error) throw error
       if (data?.error) throw new Error(data.error)
       setAnswer(data.text)
-      await grantBadge('first_coach')
     } catch (e) {
       setError(e.message || 'No se pudo contactar al coach.')
     } finally {

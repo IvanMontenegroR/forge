@@ -17,7 +17,7 @@ import Supplements from './pages/Supplements'
 import Sleep from './pages/Sleep'
 import Cardio from './pages/Cardio'
 import Coach from './pages/Coach'
-import Achievements from './pages/Achievements'
+import Rachas from './pages/Rachas'
 import Profile from './pages/Profile'
 
 export default function App() {
@@ -48,7 +48,7 @@ function AuthedApp() {
         <Route path="/sleep" element={<Sleep />} />
         <Route path="/cardio" element={<Cardio />} />
         <Route path="/coach" element={<Coach />} />
-        <Route path="/achievements" element={<Achievements />} />
+        <Route path="/rachas" element={<Rachas />} />
         <Route path="/profile" element={<Profile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

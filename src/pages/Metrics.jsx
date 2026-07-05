@@ -4,16 +4,13 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 import { Check, TrendingUp, TrendingDown, Scale } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile, useBodyMetrics, qk } from '../data/hooks'
-import { useAwards } from '../data/awards'
 import * as db from '../data/db'
 import { todayStr } from '../lib/dates'
-import { XP } from '../lib/gamification'
 import { Card, Stepper, Spinner, Empty } from '../components/ui'
 
 export default function Metrics() {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const { award, grantBadge } = useAwards()
   const { data: profile } = useProfile()
   const { data: metrics } = useBodyMetrics()
 
@@ -34,11 +31,6 @@ export default function Metrics() {
       weight_kg: Number(form.weight_kg), waist_cm: Number(form.waist_cm), arm_cm: Number(form.arm_cm),
     })
     qc.invalidateQueries({ queryKey: qk.body(user.id) })
-    await award('body_metrics', XP.body_metrics, 'Métricas registradas', { oncePerDay: true })
-    if (baseline) {
-      if (Number(form.arm_cm) - Number(baseline.arm_cm) >= 1) await grantBadge('arm_plus_1')
-      if (Number(baseline.waist_cm) - Number(form.waist_cm) >= 2) await grantBadge('waist_minus_2')
-    }
   }
 
   const chartData = (metrics || []).map((m) => ({

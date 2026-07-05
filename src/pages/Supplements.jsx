@@ -1,48 +1,29 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, Pill, Flame, Clock, AlertTriangle, Power } from 'lucide-react'
+import { Check, Pill, Clock, AlertTriangle, Power } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useProfile, useSupplements, useSupplementLogs, useStreaks, qk } from '../data/hooks'
-import { useAwards } from '../data/awards'
+import { useProfile, useSupplements, useSupplementLogs, qk } from '../data/hooks'
 import * as db from '../data/db'
 import { todayStr } from '../lib/dates'
-import { XP } from '../lib/gamification'
 import { Card, Spinner } from '../components/ui'
 
 export default function Supplements() {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const { award, grantBadge, bumpQuest } = useAwards()
   const { data: profile } = useProfile()
   const { data: supps } = useSupplements()
   const { data: logs } = useSupplementLogs()
-  const { data: streaks } = useStreaks()
 
   if (!profile || !supps) return <div className="page"><Spinner /></div>
 
   const active = supps.filter((s) => s.active)
   const optional = supps.filter((s) => !s.active)
   const takenIds = new Set((logs || []).filter((l) => l.taken).map((l) => l.user_supplement_id))
-  const creatineStreak = streaks?.find((s) => s.kind === 'creatine')?.current_count || 0
   const allTaken = active.length > 0 && active.every((s) => takenIds.has(s.id))
 
   async function toggle(s) {
     const willTake = !takenIds.has(s.id)
     await db.toggleSupplementLog(user.id, s.id, todayStr(), willTake)
     qc.invalidateQueries({ queryKey: qk.supLogs(user.id, todayStr()) })
-
-    if (s.track_streak && willTake) {
-      const st = await db.bumpDailyStreak(user.id, 'creatine')
-      qc.invalidateQueries({ queryKey: qk.streaks(user.id) })
-      await award('creatine', XP.creatine, 'Creatina del día', { oncePerDay: true })
-      await bumpQuest('creatine', 1)
-      if (st?.current_count >= 30) await grantBadge('creatine_30')
-    }
-    // ¿todos los activos tomados?
-    const nowTaken = new Set(takenIds)
-    willTake ? nowTaken.add(s.id) : nowTaken.delete(s.id)
-    if (active.every((x) => nowTaken.has(x.id))) {
-      await award('supplements_all', XP.supplements_all, 'Suplementos completos', { oncePerDay: true })
-    }
   }
 
   async function toggleActive(s) {
@@ -61,8 +42,8 @@ export default function Supplements() {
 
       <Card>
         <div className="row between">
-          <div className="row gap-8"><Flame size={20} color="var(--streak)" /><strong>Racha de creatina</strong></div>
-          <span className="num" style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--streak)' }}>{creatineStreak} <span className="faint" style={{ fontSize: '0.8rem' }}>días</span></span>
+          <div className="row gap-8"><Pill size={20} color="var(--success)" /><strong>Suplementos de hoy</strong></div>
+          <span className="num" style={{ fontSize: '1.4rem', fontWeight: 800, color: allTaken ? 'var(--success)' : 'var(--text)' }}>{[...takenIds].filter((id) => active.some((s) => s.id === id)).length}<span className="faint" style={{ fontSize: '0.8rem' }}> / {active.length}</span></span>
         </div>
         {allTaken && <p className="pill success mt-12" style={{ width: '100%', justifyContent: 'flex-start' }}><Check size={14} /> Todo tomado hoy</p>}
       </Card>

@@ -1,9 +1,11 @@
 // ============================================================
 // Hooks de React Query sobre src/data/db.js
 // ============================================================
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
-import { todayStr, weekStart, addDays } from '../lib/dates'
+import { todayStr, weekStart, addDays, isoWeekday } from '../lib/dates'
+import { computeStreak } from '../lib/streaks'
 import * as db from './db'
 
 export const qk = {
@@ -26,11 +28,6 @@ export const qk = {
   sleep: (u) => ['sleep', u],
   cardio: (u) => ['cardio', u],
   steps: (u, d) => ['steps', u, d],
-  streaks: (u) => ['streaks', u],
-  badges: () => ['badges'],
-  userBadges: (u) => ['userBadges', u],
-  quests: (u) => ['quests', u],
-  xp: (u) => ['xp', u],
 }
 
 function useUid() {
@@ -132,22 +129,45 @@ export function useStepsToday() {
   const u = useUid(); const d = todayStr()
   return useQuery({ queryKey: qk.steps(u, d), queryFn: () => db.getStepsByDate(u, d), enabled: !!u })
 }
-export function useStreaks() {
-  const u = useUid()
-  return useQuery({ queryKey: qk.streaks(u), queryFn: () => db.getStreaks(u), enabled: !!u })
+// ---------- Rachas (calculadas al vuelo) ----------
+// Racha de nutrición: un día cuenta si el total de kcal quedó ≤ objetivo.
+export function useNutritionStreak() {
+  const { data: profile } = useProfile()
+  const today = todayStr()
+  const from = addDays(today, -120)
+  const { data: rows } = useNutritionRange(from, today)
+  const goal = profile?.target_kcal || 2050
+  return useMemo(() => {
+    if (!rows || !profile) return { current: 0, longest: 0, days: [] }
+    const kcalByDay = new Map()
+    for (const n of rows) {
+      const qty = Number(n.qty || 1)
+      kcalByDay.set(n.date, (kcalByDay.get(n.date) || 0) + Number(n.kcal || 0) * qty)
+    }
+    const evalForDate = (d) => {
+      if (!kcalByDay.has(d)) return 'skip'
+      return kcalByDay.get(d) <= goal ? 'good' : 'bad'
+    }
+    return computeStreak(evalForDate, { today })
+  }, [rows, profile, goal, today])
 }
-export function useBadges() {
-  return useQuery({ queryKey: qk.badges(), queryFn: db.listBadges })
-}
-export function useUserBadges() {
-  const u = useUid()
-  return useQuery({ queryKey: qk.userBadges(u), queryFn: () => db.listUserBadges(u), enabled: !!u })
-}
-export function useWeeklyQuests() {
-  const u = useUid()
-  return useQuery({ queryKey: qk.quests(u), queryFn: () => db.getWeeklyQuests(u, weekStart()), enabled: !!u })
-}
-export function useXpEvents() {
-  const u = useUid()
-  return useQuery({ queryKey: qk.xp(u), queryFn: () => db.getXpEvents(u), enabled: !!u })
+
+// Racha de entreno: cuentan los días programados; descansos no rompen.
+export function useTrainingStreak() {
+  const { data: profile } = useProfile()
+  const { data: sessions } = useSessions()
+  const today = todayStr()
+  return useMemo(() => {
+    if (!profile || !sessions) return { current: 0, longest: 0, days: [] }
+    const trainingDays = profile.training_weekdays || [1, 2, 5]
+    const doneDates = new Set(sessions.filter((s) => s.status === 'completed').map((s) => s.date))
+    const evalForDate = (d) => {
+      const wd = isoWeekday(new Date(d + 'T00:00:00'))
+      if (!trainingDays.includes(wd)) return 'skip'       // día de descanso
+      if (doneDates.has(d)) return 'good'                 // sesión completada
+      if (d >= today) return 'skip'                       // hoy/futuro aún pendiente
+      return 'bad'                                        // día programado pasado sin sesión
+    }
+    return computeStreak(evalForDate, { today })
+  }, [profile, sessions, today])
 }

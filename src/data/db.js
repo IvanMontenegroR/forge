@@ -4,7 +4,7 @@
 // Todas las escrituras incluyen user_id; RLS garantiza el aislamiento.
 // ============================================================
 import { supabase } from '../lib/supabase'
-import { todayStr, weekStart } from '../lib/dates'
+import { todayStr } from '../lib/dates'
 
 function uid() {
   // Se asume sesión activa; las llamadas se hacen detrás del guard.
@@ -206,15 +206,6 @@ export async function toggleSupplementLog(userId, supplementId, date, taken) {
   return null
 }
 
-// streak de creatina: días seguidos con log
-export async function getSupplementStreakDates(userId, supplementId, limitDays = 60) {
-  const { data, error } = await supabase.from('supplement_logs')
-    .select('date').eq('user_id', userId).eq('user_supplement_id', supplementId)
-    .order('date', { ascending: false }).limit(limitDays)
-  if (error) throw error
-  return data.map((r) => r.date)
-}
-
 // ---------- Sueño ----------
 export async function listSleep(userId, limit = 30) {
   const { data, error } = await supabase.from('sleep_logs').select('*').eq('user_id', userId).order('date', { ascending: false }).limit(limit)
@@ -251,92 +242,6 @@ export async function getStepsByDate(userId, date = todayStr()) {
   const { data, error } = await supabase.from('cardio_logs').select('steps').eq('user_id', userId).eq('date', date).eq('type', 'steps')
   if (error) throw error
   return data.reduce((s, r) => s + (r.steps || 0), 0)
-}
-
-// ---------- Gamificación ----------
-export async function getStreaks(userId) {
-  const { data, error } = await supabase.from('streaks').select('*').eq('user_id', userId)
-  if (error) throw error
-  return data
-}
-export async function upsertStreak(userId, kind, patch) {
-  const { data, error } = await supabase.from('streaks')
-    .upsert({ user_id: userId, kind, ...patch }, { onConflict: 'user_id,kind' }).select().single()
-  if (error) throw error
-  return data
-}
-// Racha diaria genérica (protein, steps, creatine) con un "perdón".
-// Devuelve la fila actualizada. No rompe si se llama dos veces el mismo día.
-export async function bumpDailyStreak(userId, kind, date = todayStr()) {
-  const all = await getStreaks(userId)
-  const s = all.find((x) => x.kind === kind)
-  if (s?.last_date === date) return s
-  const yesterday = (() => {
-    const d = new Date(date + 'T00:00:00'); d.setDate(d.getDate() - 1)
-    return d.toISOString().slice(0, 10)
-  })()
-  let current = 1
-  let freeze = s?.freeze_available ?? true
-  if (s?.last_date) {
-    if (s.last_date === yesterday) current = (s.current_count || 0) + 1
-    else if (freeze) { current = (s.current_count || 0) + 1; freeze = false }
-    else current = 1
-  }
-  const longest = Math.max(s?.longest_count || 0, current)
-  return upsertStreak(userId, kind, {
-    current_count: current, longest_count: longest, last_date: date,
-    freeze_available: freeze, freeze_used_on: freeze ? s?.freeze_used_on : date,
-  })
-}
-
-export async function listBadges() {
-  const { data, error } = await supabase.from('badges').select('*').order('sort_order')
-  if (error) throw error
-  return data
-}
-export async function listUserBadges(userId) {
-  const { data, error } = await supabase.from('user_badges').select('*, badge:badges(*)').eq('user_id', userId)
-  if (error) throw error
-  return data
-}
-export async function awardBadge(userId, badgeId) {
-  const { data, error } = await supabase.from('user_badges')
-    .upsert({ user_id: userId, badge_id: badgeId }, { onConflict: 'user_id,badge_id', ignoreDuplicates: true })
-    .select('*, badge:badges(*)')
-  if (error) throw error
-  return data?.[0] || null
-}
-export async function getWeeklyQuests(userId, week = weekStart()) {
-  const { data, error } = await supabase.from('weekly_quests').select('*').eq('user_id', userId).eq('week_start', week).order('code')
-  if (error) throw error
-  return data
-}
-export async function upsertQuests(rows) {
-  const { data, error } = await supabase.from('weekly_quests').upsert(rows, { onConflict: 'user_id,week_start,code' }).select()
-  if (error) throw error
-  return data
-}
-export async function addXpEvent(userId, { type, xp, multiplier = 1, description, refDate = todayStr() }) {
-  const { data, error } = await supabase.from('xp_events')
-    .insert({ user_id: userId, type, xp, multiplier, description, ref_date: refDate }).select().single()
-  if (error) throw error
-  return data
-}
-export async function getXpEvents(userId, limit = 50) {
-  const { data, error } = await supabase.from('xp_events').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit)
-  if (error) throw error
-  return data
-}
-export async function hasXpEvent(userId, type, refDate) {
-  const { data, error } = await supabase.from('xp_events').select('id').eq('user_id', userId).eq('type', type).eq('ref_date', refDate).limit(1)
-  if (error) throw error
-  return data.length > 0
-}
-export async function bumpProfileXp(userId, delta) {
-  // lee y suma (no hay UPDATE atómico con expresión vía PostgREST sin RPC)
-  const prof = await getProfile(userId)
-  const newXp = (prof?.xp || 0) + delta
-  return updateProfile(userId, { xp: newXp })
 }
 
 export { uid }

@@ -3,16 +3,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Footprints, Check, Zap } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile, useCardio, useStepsToday, qk } from '../data/hooks'
-import { useAwards } from '../data/awards'
 import * as db from '../data/db'
 import { todayStr, prettyDate } from '../lib/dates'
-import { XP } from '../lib/gamification'
 import { Card, ProgressBar, Stepper, Spinner } from '../components/ui'
 
 export default function Cardio() {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const { award, grantBadge, bumpQuest } = useAwards()
   const { data: profile } = useProfile()
   const { data: steps } = useStepsToday()
   const { data: logs } = useCardio()
@@ -28,18 +25,11 @@ export default function Cardio() {
     await db.setSteps(user.id, todayStr(), n)
     qc.invalidateQueries({ queryKey: qk.steps(user.id, todayStr()) })
     qc.invalidateQueries({ queryKey: qk.cardio(user.id) })
-    if (n >= goal) {
-      await award('steps_goal', XP.steps_goal, 'Meta de pasos cumplida', { oncePerDay: true })
-      const st = await db.bumpDailyStreak(user.id, 'steps')
-      qc.invalidateQueries({ queryKey: qk.streaks(user.id) })
-      if (st?.current_count >= 7) await grantBadge('steps_week')
-    }
   }
 
   async function addHiit() {
     await db.addCardio(user.id, { date: todayStr(), type: 'hiit', duration_min: Number(hiit.duration_min) || 15 })
     qc.invalidateQueries({ queryKey: qk.cardio(user.id) })
-    await bumpQuest('hiit', 1)
   }
 
   const hiitThisWeek = (logs || []).filter((l) => l.type === 'hiit').length

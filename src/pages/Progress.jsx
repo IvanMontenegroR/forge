@@ -51,6 +51,7 @@ function NutritionProgress({ profile }) {
   const today = todayStr()
 
   const [weekOff, setWeekOff] = useState(0)
+  const [openDate, setOpenDate] = useState(null)
   const from = addDays(weekStart(), weekOff * 7)
   const to = addDays(from, 6)
   const { data: weekRows, isLoading } = useNutritionRange(from, to)
@@ -100,22 +101,48 @@ function NutritionProgress({ profile }) {
       <Card title="Semana (lun–dom)">
         {isLoading ? <Spinner /> : (
           <div className="col" style={{ gap: 14 }}>
-            {days.map((d) => (
-              <div key={d.date} className="row gap-12" style={{ opacity: d.isFuture ? 0.45 : 1 }}>
-                <div className="center" style={{ width: 38 }}>
-                  <strong style={{ fontSize: '0.9rem' }}>{WEEKDAY_NAMES[d.wd]}</strong>
-                  <div className="faint num" style={{ fontSize: '0.74rem' }}>{d.date.slice(8)}</div>
+            {days.map((d) => {
+              const open = openDate === d.date
+              const items = open ? (weekRows || []).filter((r) => r.date === d.date) : []
+              return (
+                <div key={d.date}>
+                  <button
+                    className="row gap-12"
+                    onClick={() => setOpenDate(open ? null : d.date)}
+                    disabled={!d.hasData}
+                    style={{ width: '100%', background: 'transparent', border: 'none', padding: 0, textAlign: 'left', cursor: d.hasData ? 'pointer' : 'default', opacity: d.isFuture ? 0.45 : 1 }}
+                  >
+                    <div className="center" style={{ width: 38 }}>
+                      <strong style={{ fontSize: '0.9rem' }}>{WEEKDAY_NAMES[d.wd]}</strong>
+                      <div className="faint num" style={{ fontSize: '0.74rem' }}>{d.date.slice(8)}</div>
+                    </div>
+                    <div className="grow col" style={{ gap: 6 }}>
+                      <div className="row between" style={{ fontSize: '0.78rem' }}>
+                        <span className="row gap-4"><Beef size={12} color="var(--danger)" /> {Math.round(d.protein_g)}/{proteinGoal}g {d.proteinReached && <Check size={13} color="var(--success)" />}</span>
+                        <span className="row gap-4"><Flame size={12} color="var(--info)" /> {Math.round(d.kcal)}/{kcalGoal} {d.kcalOver && <AlertTriangle size={12} color="var(--warn)" />}</span>
+                      </div>
+                      <ProgressBar value={d.protein_g} max={proteinGoal} variant={d.proteinReached ? 'success' : ''} />
+                      <ProgressBar value={d.kcal} max={kcalGoal} variant={d.kcalOver ? 'warn' : 'info'} />
+                    </div>
+                    <ChevronRight size={16} color="var(--text-faint)" style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', opacity: d.hasData ? 1 : 0 }} />
+                  </button>
+                  {open && (
+                    <div className="col" style={{ paddingLeft: 50, marginTop: 6 }}>
+                      {items.length ? items.map((l) => (
+                        <div key={l.id} className="list-row" style={{ padding: '8px 0' }}>
+                          <div className="grow">
+                            <strong style={{ fontSize: '0.9rem' }}>{l.name}{l.qty > 1 ? ` ×${l.qty}` : ''}</strong>
+                            <span className="faint num" style={{ display: 'block', fontSize: '0.78rem' }}>
+                              {Math.round(l.protein_g * l.qty)} g proteína{l.kcal ? ` · ${Math.round(l.kcal * l.qty)} kcal` : ''}
+                            </span>
+                          </div>
+                        </div>
+                      )) : <p className="faint" style={{ fontSize: '0.8rem', padding: '6px 0' }}>Nada registrado ese día.</p>}
+                    </div>
+                  )}
                 </div>
-                <div className="grow col" style={{ gap: 6 }}>
-                  <div className="row between" style={{ fontSize: '0.78rem' }}>
-                    <span className="row gap-4"><Beef size={12} color="var(--danger)" /> {Math.round(d.protein_g)}/{proteinGoal}g {d.proteinReached && <Check size={13} color="var(--success)" />}</span>
-                    <span className="row gap-4"><Flame size={12} color="var(--info)" /> {Math.round(d.kcal)}/{kcalGoal} {d.kcalOver && <AlertTriangle size={12} color="var(--warn)" />}</span>
-                  </div>
-                  <ProgressBar value={d.protein_g} max={proteinGoal} variant={d.proteinReached ? 'success' : ''} />
-                  <ProgressBar value={d.kcal} max={kcalGoal} variant={d.kcalOver ? 'warn' : 'info'} />
-                </div>
-              </div>
-            ))}
+              )
+            })}
             <div className="faint num center" style={{ fontSize: '0.8rem', marginTop: 2 }}>
               Total semana: {Math.round(weekProtein)} g proteína · {Math.round(weekKcal)} / {kcalGoal * 7} kcal
             </div>

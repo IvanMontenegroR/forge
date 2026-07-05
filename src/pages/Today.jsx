@@ -1,25 +1,21 @@
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Dumbbell, Moon, Beef, Pill, Footprints, Ruler, Sparkles, Camera,
-  ChevronRight, Play, CheckCircle2, Coffee, Zap, Flame,
+  ChevronRight, Play, CheckCircle2, Coffee, Flame,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
   useProfile, useProgramDays, useTodaySession, useNutritionToday,
   useSupplements, useSupplementLogs, useStepsToday,
-  useWeeklyQuests, useBodyMetrics, useNutritionWeek,
+  useBodyMetrics, useNutritionWeek, useTrainingStreak, useNutritionStreak,
 } from '../data/hooks'
-import { useAwards } from '../data/awards'
-import { ensureStreaks, ensureWeeklyQuests } from '../data/bootstrap'
 import { isoWeekday, todayStr, WEEKDAY_LONG, prettyDate, daysBetween } from '../lib/dates'
-import { levelFromXp, muscleMemoryState } from '../lib/gamification'
-import { Card, Stat, ProgressBar, Ring, Spinner } from '../components/ui'
+import { Card, ProgressBar, Spinner } from '../components/ui'
 
 export default function Today() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { award } = useAwards()
   const { data: profile } = useProfile()
   const { data: programDays } = useProgramDays(profile?.active_program_id)
   const { data: session } = useTodaySession()
@@ -27,17 +23,10 @@ export default function Today() {
   const { data: supplements } = useSupplements()
   const { data: supLogs } = useSupplementLogs()
   const { data: steps } = useStepsToday()
-  const { data: quests } = useWeeklyQuests()
   const { data: metrics } = useBodyMetrics()
   const { data: nutWeek } = useNutritionWeek()
-
-  // asegurar filas base (cuentas seedeadas por script o nuevas)
-  useEffect(() => {
-    if (user && profile) {
-      ensureStreaks(user.id)
-      ensureWeeklyQuests(user.id, profile)
-    }
-  }, [user, profile])
+  const train = useTrainingStreak()
+  const nut = useNutritionStreak()
 
   const wd = isoWeekday()
   const todayPlan = useMemo(() => {
@@ -47,8 +36,6 @@ export default function Today() {
 
   if (!profile) return <div className="page"><Spinner /></div>
 
-  const lvl = levelFromXp(profile.xp || 0)
-  const mm = muscleMemoryState(profile.muscle_memory_start, profile.muscle_memory_days, todayStr())
   const proteinToday = (nutrition || []).reduce((s, n) => s + Number(n.protein_g) * Number(n.qty || 1), 0)
   const proteinGoal = profile.protein_goal_g || 145
   const kcalToday = (nutrition || []).reduce((s, n) => s + Number(n.kcal || 0) * Number(n.qty || 1), 0)
@@ -64,10 +51,6 @@ export default function Today() {
   const isOptional = todayPlan?.is_optional
   const sessionDone = session?.status === 'completed'
 
-  async function markRest() {
-    await award('rest_day', 10, 'Descanso respetado', { oncePerDay: true })
-  }
-
   return (
     <div className="page">
       <div className="page-head">
@@ -75,23 +58,33 @@ export default function Today() {
         <h1>Hola, {profile.full_name?.split(' ')[0] || 'crack'}</h1>
       </div>
 
-      {/* XP / nivel */}
-      <Card>
-        <div className="row between">
-          <div className="row gap-12">
-            <Ring progress={lvl.progress} size={52} stroke={6} color={lvl.rank.color}>
-              <span style={{ fontSize: 16 }}>{lvl.level}</span>
-            </Ring>
-            <div className="col" style={{ gap: 2 }}>
-              <strong style={{ color: lvl.rank.color }}>{lvl.rank.name}</strong>
-              <span className="faint" style={{ fontSize: '0.8rem' }}>{lvl.intoLevel} / {lvl.span} XP · faltan {lvl.toNext}</span>
-            </div>
-          </div>
-          {mm.active && (
-            <span className="pill xp" title="Multiplicador de XP activo"><Zap size={14} /> x{mm.multiplier}</span>
-          )}
+      {/* Rachas */}
+      <Card title="Rachas" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/rachas')}>Ver</button>}>
+        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
+          <StreakTile icon={Dumbbell} color="var(--accent)" label="Entrenamiento" current={train.current} longest={train.longest} />
+          <StreakTile icon={Beef} color="var(--danger)" label="Nutrición" current={nut.current} longest={nut.longest} />
         </div>
-        <div className="bar xp mt-12"><span style={{ width: `${lvl.progress * 100}%` }} /></div>
+        <p className="faint mt-12" style={{ fontSize: '0.76rem' }}>Podés fallar 2 días por semana sin cortar la racha. Nutrición cuenta días bajo tu techo de {kcalGoal} kcal.</p>
+      </Card>
+
+      {/* Calorías (directamente debajo de las rachas) */}
+      <Card title="Calorías" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/nutrition')}>Registrar</button>}>
+        <div className="col gap-12">
+          <div className="col gap-4">
+            <div className="row between">
+              <span className="row gap-8" style={{ fontSize: '0.88rem', fontWeight: 600 }}><Flame size={15} color="var(--info)" /> Hoy</span>
+              <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalToday)} / {kcalGoal} kcal</span>
+            </div>
+            <ProgressBar value={kcalToday} max={kcalGoal} variant={kcalToday > kcalGoal ? 'warn' : ''} />
+          </div>
+          <div className="col gap-4">
+            <div className="row between">
+              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Semana (lun–dom)</span>
+              <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalWeek)} / {kcalWeekGoal} kcal</span>
+            </div>
+            <ProgressBar value={kcalWeek} max={kcalWeekGoal} variant={kcalWeek > kcalWeekGoal ? 'warn' : ''} />
+          </div>
+        </div>
       </Card>
 
       {/* Sesión de hoy */}
@@ -125,61 +118,9 @@ export default function Today() {
           <div className="center" style={{ padding: '8px 0' }}>
             <span className="lead" style={{ width: 48, height: 48, margin: '0 auto 10px', background: 'var(--info-soft)', color: 'var(--info)' }}><Coffee size={24} /></span>
             <strong>Día de descanso</strong>
-            <p className="muted mt-8" style={{ fontSize: '0.88rem' }}>La recuperación es donde crece el músculo. Tu racha de entreno no se rompe hoy.</p>
-            <button className="btn btn-ghost btn-block mt-16" onClick={markRest}>Registrar descanso (+10 XP)</button>
+            <p className="muted mt-8" style={{ fontSize: '0.88rem' }}>La recuperación es donde crece el músculo. Los días de descanso no rompen tu racha de entreno.</p>
           </div>
         )}
-      </Card>
-
-      {/* Muscle memory */}
-      {mm.active && (
-        <Card>
-          <div className="row between">
-            <div className="col" style={{ gap: 2 }}>
-              <span className="row gap-8" style={{ fontWeight: 700 }}><Zap size={16} color="var(--xp)" /> Muscle Memory</span>
-              <span className="muted" style={{ fontSize: '0.82rem' }}>Ventana de resultados rápidos · XP x{mm.multiplier}</span>
-            </div>
-            <Stat value={mm.daysLeft} label="días" color="var(--xp)" />
-          </div>
-          <div className="bar xp mt-12"><span style={{ width: `${((mm.total - mm.daysLeft) / mm.total) * 100}%` }} /></div>
-        </Card>
-      )}
-
-      {/* Misiones de la semana */}
-      {quests?.length > 0 && (
-        <Card title="Misiones de la semana" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/achievements')}>Ver todas</button>}>
-          <div className="col gap-12">
-            {quests.slice(0, 3).map((q) => (
-              <div key={q.id} className="col gap-4">
-                <div className="row between">
-                  <span style={{ fontSize: '0.88rem', fontWeight: 600, textDecoration: q.completed ? 'line-through' : 'none', opacity: q.completed ? 0.6 : 1 }}>{q.title}</span>
-                  <span className="faint num" style={{ fontSize: '0.8rem' }}>{q.progress}/{q.target}</span>
-                </div>
-                <ProgressBar value={q.progress} max={q.target} variant={q.completed ? 'success' : ''} />
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Calorías */}
-      <Card title="Calorías" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/nutrition')}>Registrar</button>}>
-        <div className="col gap-12">
-          <div className="col gap-4">
-            <div className="row between">
-              <span className="row gap-8" style={{ fontSize: '0.88rem', fontWeight: 600 }}><Flame size={15} color="var(--info)" /> Hoy</span>
-              <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalToday)} / {kcalGoal} kcal</span>
-            </div>
-            <ProgressBar value={kcalToday} max={kcalGoal} variant={kcalToday > kcalGoal ? 'warn' : ''} />
-          </div>
-          <div className="col gap-4">
-            <div className="row between">
-              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Semana (lun–dom)</span>
-              <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalWeek)} / {kcalWeekGoal} kcal</span>
-            </div>
-            <ProgressBar value={kcalWeek} max={kcalWeekGoal} variant={kcalWeek > kcalWeekGoal ? 'warn' : ''} />
-          </div>
-        </div>
       </Card>
 
       {/* Accesos rápidos */}
@@ -206,6 +147,21 @@ export default function Today() {
           </div>
         </Card>
       )}
+    </div>
+  )
+}
+
+function StreakTile({ icon: Icon, color, label, current, longest }) {
+  const on = current > 0
+  return (
+    <div className="row gap-12" style={{ background: 'var(--bg-elev)', borderRadius: 12, padding: 12 }}>
+      <Icon size={22} color={on ? color : 'var(--text-faint)'} />
+      <div className="col" style={{ gap: 0 }}>
+        <span className="num row gap-4" style={{ fontSize: '1.5rem', fontWeight: 800, color: on ? color : 'var(--text)', alignItems: 'baseline' }}>
+          {on && <Flame size={15} color={color} />}{current}<span className="faint" style={{ fontSize: '0.8rem' }}>d</span>
+        </span>
+        <span className="faint" style={{ fontSize: '0.72rem' }}>{label} · récord {longest}</span>
+      </div>
     </div>
   )
 }

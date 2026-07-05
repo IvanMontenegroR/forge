@@ -4,10 +4,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Check, Plus, Trophy, TrendingUp, Info, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile, useProgramDays, useTodaySession, useSessionSets, usePrevSets, qk } from '../data/hooks'
-import { useAwards } from '../data/awards'
 import * as db from '../data/db'
-import { isoWeekday, todayStr, weekStart } from '../lib/dates'
-import { XP } from '../lib/gamification'
+import { isoWeekday, todayStr } from '../lib/dates'
 import { Card, Spinner, Stepper } from '../components/ui'
 
 export default function Workout() {
@@ -80,7 +78,6 @@ function Header({ onBack, title, right }) {
 function ActiveSession({ session, dayPlan, profile, navigate }) {
   const { user } = useAuth()
   const qc = useQueryClient()
-  const { award, grantBadge, bumpQuest } = useAwards()
   const { data: sessionSets } = useSessionSets(session.id)
   const [finishing, setFinishing] = useState(false)
 
@@ -95,87 +92,12 @@ function ActiveSession({ session, dayPlan, profile, navigate }) {
   async function finishSession() {
     setFinishing(true)
     try {
-      // Detección de PRs (peso máximo por ejercicio, todo el histórico previo)
-      const prs = []
-      for (const pde of exercises) {
-        const exId = pde.exercise_id
-        const sessionBest = (sessionSets || [])
-          .filter((s) => s.exercise_id === exId && s.done && !s.is_warmup)
-          .reduce((m, s) => Math.max(m, Number(s.weight_kg)), 0)
-        if (sessionBest <= 0) continue
-        const history = await db.getExerciseHistory(user.id, exId) // solo sesiones completadas previas
-        const prevBest = history.reduce((m, s) => Math.max(m, Number(s.weight_kg)), 0)
-        if (sessionBest > prevBest && prevBest > 0) prs.push({ name: pde.exercise?.name, weight: sessionBest })
-      }
-
       await db.completeSession(session.id, { totalVolume, notes: null })
-
-      // XP base por completar
-      await award('session_complete', XP.session_complete, `Sesión: ${dayPlan?.name || 'Entrenamiento'}`)
-      // PRs
-      for (const pr of prs) {
-        await award('pr', XP.pr, `PR en ${pr.name}: ${pr.weight} kg`)
-        await grantBadge('first_pr')
-      }
-      // Racha de entreno (cuenta días PROGRAMADOS, no calendario)
-      await bumpWorkoutStreak()
-      // Misión de sesiones
-      await bumpQuest('sessions', 1)
-      // Badges por cantidad de sesiones
-      const sessions = await db.listSessions(user.id, 200)
-      const completed = sessions.filter((s) => s.status === 'completed').length
-      if (completed >= 1) await grantBadge('first_session')
-      if (completed >= 10) await grantBadge('sessions_10')
-      if (completed >= 50) await grantBadge('sessions_50')
-      // Semana perfecta
-      await checkPerfectWeek(sessions)
-
       qc.invalidateQueries({ queryKey: qk.session(user.id, todayStr()) })
       qc.invalidateQueries({ queryKey: qk.sessions(user.id) })
-      qc.invalidateQueries({ queryKey: qk.streaks(user.id) })
     } finally {
       setFinishing(false)
     }
-  }
-
-  // Racha de entreno respetando el split.
-  async function bumpWorkoutStreak() {
-    const streaks = await db.getStreaks(user.id)
-    const ws = streaks.find((s) => s.kind === 'workout')
-    const today = todayStr()
-    if (ws?.last_date === today) return
-    // último día programado antes de hoy que debería haberse entrenado
-    const trainingDays = profile?.training_weekdays || [1, 2, 5]
-    const expectedPrev = previousTrainingDate(today, trainingDays)
-    let current = 1
-    let freezeAvailable = ws?.freeze_available ?? true
-    if (ws?.last_date) {
-      if (ws.last_date >= expectedPrev) {
-        current = (ws.current_count || 0) + 1 // seguidilla intacta
-      } else if (freezeAvailable) {
-        current = (ws.current_count || 0) + 1 // se usa el "perdón"
-        freezeAvailable = false
-      } else {
-        current = 1 // se rompió
-      }
-    }
-    const longest = Math.max(ws?.longest_count || 0, current)
-    await db.upsertStreak(user.id, 'workout', {
-      current_count: current, longest_count: longest, last_date: today,
-      freeze_available: freezeAvailable, freeze_used_on: freezeAvailable ? ws?.freeze_used_on : today,
-    })
-    if (current >= 7) await grantBadge('streak_7')
-    if (current >= 30) await grantBadge('streak_30')
-  }
-
-  async function checkPerfectWeek(sessions) {
-    const ws = weekStart()
-    const trainingDays = profile?.training_weekdays || [1, 2, 5]
-    const thisWeek = sessions.filter((s) => s.status === 'completed' && weekStart(s.date) === ws)
-    const trainedWeekdays = new Set(thisWeek.map((s) => {
-      const d = new Date(s.date + 'T00:00:00'); const w = d.getDay(); return w === 0 ? 7 : w
-    }))
-    if (trainingDays.every((d) => trainedWeekdays.has(d))) await grantBadge('perfect_week')
   }
 
   return (
@@ -345,18 +267,4 @@ function ExerciseBlock({ pde, session, existing, readOnly }) {
       )}
     </Card>
   )
-}
-
-// Fecha del día de entreno programado anterior a `dateStr`.
-function previousTrainingDate(dateStr, trainingDays) {
-  const d = new Date(dateStr + 'T00:00:00')
-  for (let i = 1; i <= 7; i++) {
-    d.setDate(d.getDate() - 1)
-    const w = d.getDay() === 0 ? 7 : d.getDay()
-    if (trainingDays.includes(w)) {
-      const y = d.getFullYear(); const m = String(d.getMonth() + 1).padStart(2, '0'); const day = String(d.getDate()).padStart(2, '0')
-      return `${y}-${m}-${day}`
-    }
-  }
-  return dateStr
 }
