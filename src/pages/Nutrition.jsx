@@ -100,28 +100,38 @@ export default function Nutrition() {
   }
 
   async function onPhoto(e) {
-    const file = e.target.files?.[0]
-    e.target.value = '' // permite re-elegir la misma foto
-    if (!file) return
+    const files = Array.from(e.target.files || [])
+    e.target.value = '' // permite re-elegir las mismas fotos
+    if (!files.length) return
     setPhotoBusy(true); setPhotoErr(null)
+    const allItems = []
+    const notes = []
+    let failed = 0
     try {
-      const { base64, media_type } = await fileToResizedBase64(file)
-      const { data, error } = await supabase.functions.invoke(MEAL_FUNCTION, {
-        body: { image: base64, media_type, model: photoModel },
-      })
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-      const items = (data.items || []).map((it) => ({
-        name: it.name || 'Comida',
-        kcal: Math.round(Number(it.kcal) || 0),
-        protein_g: Math.round(Number(it.protein_g) || 0),
-      }))
-      if (!items.length) throw new Error('No pude identificar comida en la foto. Probá con otra toma.')
-      if (modeRef.current === 'save') {
-        for (const it of items) await add(it)
-      } else {
-        setReview({ items, note: data.note })
+      for (const file of files) {
+        try {
+          const { base64, media_type } = await fileToResizedBase64(file)
+          const { data, error } = await supabase.functions.invoke(MEAL_FUNCTION, {
+            body: { image: base64, media_type, model: photoModel },
+          })
+          if (error) throw error
+          if (data?.error) throw new Error(data.error)
+          const items = (data.items || []).map((it) => ({
+            name: it.name || 'Comida',
+            kcal: Math.round(Number(it.kcal) || 0),
+            protein_g: Math.round(Number(it.protein_g) || 0),
+          }))
+          allItems.push(...items)
+          if (data.note) notes.push(data.note)
+        } catch { failed++ }
       }
+      if (!allItems.length) throw new Error('No pude identificar comida en las fotos. Probá con otras tomas.')
+      if (modeRef.current === 'save') {
+        for (const it of allItems) await add(it)
+      } else {
+        setReview({ items: allItems, note: notes.join(' · ') })
+      }
+      if (failed) setPhotoErr(`${failed} de ${files.length} foto(s) no se pudieron analizar; el resto sí.`)
     } catch (err) {
       setPhotoErr(err.message || 'No se pudo analizar la foto.')
     } finally {
@@ -183,7 +193,7 @@ export default function Nutrition() {
 
       <Card title="Foto del plato">
         <p className="muted" style={{ fontSize: '0.86rem' }}>
-          Sacá o subí una foto y Claude estima calorías y proteína.
+          Sacá o subí una o varias fotos y Claude estima calorías y proteína de cada una.
         </p>
         <div className="row gap-8 mt-12">
           <button className="btn btn-primary grow" onClick={() => pickPhoto('review')} disabled={photoBusy}>
@@ -200,8 +210,8 @@ export default function Nutrition() {
             {MEAL_MODELS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
         </div>
-        <input ref={fileRef} type="file" accept="image/*" onChange={onPhoto} style={{ display: 'none' }} />
-        {photoBusy && <div className="mt-12"><Spinner label="Analizando la foto…" /></div>}
+        <input ref={fileRef} type="file" accept="image/*" multiple onChange={onPhoto} style={{ display: 'none' }} />
+        {photoBusy && <div className="mt-12"><Spinner label="Analizando las fotos…" /></div>}
         {photoErr && (
           <div className="pill" style={{ color: 'var(--danger)', background: 'var(--danger-soft)', width: '100%', justifyContent: 'flex-start', marginTop: 12 }}>
             <AlertCircle size={14} /> {photoErr}
