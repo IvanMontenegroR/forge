@@ -42,6 +42,8 @@ export default function Today() {
   const kcalGoal = profile.target_kcal || 2050
   const kcalWeek = nutWeek?.kcal || 0
   const kcalWeekGoal = kcalGoal * 7
+  const proteinWeek = nutWeek?.protein_g || 0
+  const proteinWeekGoal = proteinGoal * 7
   const activeSupps = (supplements || []).filter((s) => s.active)
   const suppsTaken = (supLogs || []).filter((l) => l.taken).length
   const stepGoal = profile.step_goal || 9000
@@ -54,7 +56,7 @@ export default function Today() {
   return (
     <div className="page">
       <div className="page-head">
-        <p className="eyebrow">{WEEKDAY_LONG[wd]} · {prettyDate(todayStr()).split(',')[0]}</p>
+        <p className="eyebrow">{WEEKDAY_LONG[wd]} · {prettyDate(todayStr()).split(', ')[1]}</p>
         <h1>Hola, {profile.full_name?.split(' ')[0] || 'crack'}</h1>
       </div>
 
@@ -83,6 +85,26 @@ export default function Today() {
               <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalWeek)} / {kcalWeekGoal} kcal</span>
             </div>
             <ProgressBar value={kcalWeek} max={kcalWeekGoal} variant={kcalVariant(kcalWeek, kcalWeekGoal)} />
+          </div>
+        </div>
+      </Card>
+
+      {/* Proteína (mismo formato que calorías) */}
+      <Card title="Proteína" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/nutrition')}>Registrar</button>}>
+        <div className="col gap-12">
+          <div className="col gap-4">
+            <div className="row between">
+              <span className="row gap-8" style={{ fontSize: '0.88rem', fontWeight: 600 }}><Beef size={15} color="var(--danger)" /> Hoy</span>
+              <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(proteinToday)} / {proteinGoal} g</span>
+            </div>
+            <ProgressBar value={proteinToday} max={proteinGoal} variant={proteinToday >= proteinGoal ? 'success' : ''} />
+          </div>
+          <div className="col gap-4">
+            <div className="row between">
+              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Semana (lun–dom)</span>
+              <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(proteinWeek)} / {proteinWeekGoal} g</span>
+            </div>
+            <ProgressBar value={proteinWeek} max={proteinWeekGoal} variant={proteinWeek >= proteinWeekGoal ? 'success' : ''} />
           </div>
         </div>
       </Card>
