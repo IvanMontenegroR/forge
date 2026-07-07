@@ -33,6 +33,14 @@ export default function Progress() {
 
 // ───────────────────────── Nutrición ─────────────────────────
 
+// Color de la barra de calorías según cercanía al tope: azul → ámbar → rojo.
+function kcalVariant(value, max) {
+  const r = max ? value / max : 0
+  if (r > 1) return 'danger'
+  if (r >= 0.8) return 'warn'
+  return 'info'
+}
+
 function aggregateByDate(rows) {
   const m = new Map()
   for (const n of rows || []) {
@@ -88,8 +96,26 @@ function NutritionProgress({ profile }) {
         <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setWeekOff((o) => Math.min(0, o + 1))} disabled={weekOff >= 0} aria-label="semana siguiente"><ChevronRight size={18} /></button>
       </div>
 
+      {/* Resumen de la semana — calorías primero */}
+      <Card title="Esta semana">
+        <div className="col gap-4">
+          <div className="row between" style={{ fontSize: '0.82rem' }}>
+            <span className="row gap-4"><Flame size={13} color="var(--info)" /> Calorías</span>
+            <span className="faint num">{Math.round(weekKcal)} / {kcalGoal * 7} kcal</span>
+          </div>
+          <ProgressBar value={weekKcal} max={kcalGoal * 7} variant={kcalVariant(weekKcal, kcalGoal * 7)} />
+        </div>
+        <div className="col gap-4 mt-12">
+          <div className="row between" style={{ fontSize: '0.82rem' }}>
+            <span className="row gap-4"><Beef size={13} color="var(--danger)" /> Proteína</span>
+            <span className="faint num">{Math.round(weekProtein)} / {proteinGoal * 7} g</span>
+          </div>
+          <ProgressBar value={weekProtein} max={proteinGoal * 7} variant={weekProtein >= proteinGoal * 7 ? 'success' : ''} />
+        </div>
+      </Card>
+
       {/* Resumen semanal */}
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)', marginBottom: 14 }}>
+      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)', marginTop: 14, marginBottom: 14 }}>
         <Card style={{ padding: 14 }}>
           <Stat label="Días con proteína OK" value={`${proteinDaysOk}/${logged.length || 0}`} color="var(--success)" />
         </Card>
@@ -143,21 +169,6 @@ function NutritionProgress({ profile }) {
                 </div>
               )
             })}
-            <div className="col gap-6" style={{ marginTop: 4, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-              <div className="faint num center" style={{ fontSize: '0.8rem' }}>
-                Total semana: {Math.round(weekProtein)} g proteína · {Math.round(weekKcal)} / {kcalGoal * 7} kcal
-              </div>
-              <div className="row between" style={{ fontSize: '0.78rem', marginTop: 4 }}>
-                <span className="row gap-4"><Flame size={12} color="var(--info)" /> Calorías de la semana</span>
-                <span className="faint num">{Math.round(weekKcal)}/{kcalGoal * 7}</span>
-              </div>
-              <ProgressBar value={weekKcal} max={kcalGoal * 7} variant={weekKcal > kcalGoal * 7 ? 'warn' : 'info'} />
-              <div className="row between" style={{ fontSize: '0.78rem', marginTop: 4 }}>
-                <span className="row gap-4"><Beef size={12} color="var(--danger)" /> Proteína de la semana</span>
-                <span className="faint num">{Math.round(weekProtein)}/{proteinGoal * 7} g</span>
-              </div>
-              <ProgressBar value={weekProtein} max={proteinGoal * 7} variant={weekProtein >= proteinGoal * 7 ? 'success' : ''} />
-            </div>
           </div>
         )}
       </Card>

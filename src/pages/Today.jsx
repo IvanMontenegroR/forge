@@ -75,14 +75,14 @@ export default function Today() {
               <span className="row gap-8" style={{ fontSize: '0.88rem', fontWeight: 600 }}><Flame size={15} color="var(--info)" /> Hoy</span>
               <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalToday)} / {kcalGoal} kcal</span>
             </div>
-            <ProgressBar value={kcalToday} max={kcalGoal} variant={kcalToday > kcalGoal ? 'warn' : ''} />
+            <ProgressBar value={kcalToday} max={kcalGoal} variant="info" />
           </div>
           <div className="col gap-4">
             <div className="row between">
               <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Semana (lun–dom)</span>
               <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalWeek)} / {kcalWeekGoal} kcal</span>
             </div>
-            <ProgressBar value={kcalWeek} max={kcalWeekGoal} variant={kcalWeek > kcalWeekGoal ? 'warn' : ''} />
+            <ProgressBar value={kcalWeek} max={kcalWeekGoal} variant={kcalVariant(kcalWeek, kcalWeekGoal)} />
           </div>
         </div>
       </Card>
@@ -149,6 +149,14 @@ export default function Today() {
       )}
     </div>
   )
+}
+
+// Color de la barra de calorías según cercanía al tope: azul → ámbar → rojo.
+function kcalVariant(value, max) {
+  const r = max ? value / max : 0
+  if (r > 1) return 'danger'
+  if (r >= 0.8) return 'warn'
+  return 'info'
 }
 
 function StreakTile({ icon: Icon, color, label, current, longest }) {

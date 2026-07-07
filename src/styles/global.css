@@ -192,6 +192,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; colo
 .bar.success > span { background: var(--success); }
 .bar.info > span { background: var(--info); }
 .bar.warn > span { background: var(--warn); }
+.bar.danger > span { background: var(--danger); }
 
 /* ---------- Stat ---------- */
 .stat { display: flex; flex-direction: column; gap: 2px; }
