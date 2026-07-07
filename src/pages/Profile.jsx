@@ -3,18 +3,18 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { LogOut, Save, Plus, Trash2, Check, ShieldCheck, ChevronRight } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useProfile, usePrograms, useUserFoods, useSupplements, qk } from '../data/hooks'
+import { useProfile, useUserFoods, useSupplements, qk } from '../data/hooks'
 import { supabase } from '../lib/supabase'
 import * as db from '../data/db'
 import { WEEKDAY_NAMES } from '../lib/dates'
 import { Card, Spinner } from '../components/ui'
+import ProgramPicker from '../components/ProgramPicker'
 
 export default function Profile() {
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
   const qc = useQueryClient()
   const { data: profile } = useProfile()
-  const { data: programs } = usePrograms()
   const { data: foods } = useUserFoods()
   const { data: supps } = useSupplements()
 
@@ -60,12 +60,6 @@ export default function Profile() {
           </select>
         </div>
         <div className="field">
-          <label>Programa activo</label>
-          <select className="select input" value={f.active_program_id || ''} onChange={(e) => set({ active_program_id: e.target.value })}>
-            {programs?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </div>
-        <div className="field">
           <label>Días de entreno</label>
           <div className="row wrap gap-8">
             {[1, 2, 3, 4, 5, 6, 7].map((d) => (
@@ -86,6 +80,17 @@ export default function Profile() {
           <div className="grow"><NumField label="Mantenimiento (kcal)" value={f.maintenance_kcal} onChange={(v) => set({ maintenance_kcal: v })} /></div>
           <div className="grow"><NumField label="Objetivo (kcal)" value={f.target_kcal} onChange={(v) => set({ target_kcal: v })} /></div>
         </div>
+      </Card>
+
+      <Card title="Programa">
+        <ProgramPicker
+          payload={{
+            goal: f.goal, age: profile.age, height: profile.height_cm, weight: profile.start_weight_kg,
+            weekdays: f.training_weekdays, equipment: profile.equipment, protein: f.protein_goal_g,
+          }}
+          selectedId={f.active_program_id}
+          onSelect={(id) => set({ active_program_id: id })}
+        />
       </Card>
 
       <button className="btn btn-primary btn-block btn-lg" onClick={save}>

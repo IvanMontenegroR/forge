@@ -7,6 +7,7 @@ import * as db from '../data/db'
 import { seedNewUserDefaults } from '../data/bootstrap'
 import { WEEKDAY_NAMES } from '../lib/dates'
 import { Spinner } from '../components/ui'
+import ProgramPicker from '../components/ProgramPicker'
 
 const GOALS = [
   { id: 'recomp', label: 'Recomposición', desc: 'Ganar músculo y bajar grasa a la vez' },
@@ -173,23 +174,19 @@ export default function Onboarding() {
         </div>
 
         <div className="card">
-          <h3 className="card-title">Programa</h3>
-          <div className="col gap-8">
-            {programs?.map((p) => (
-              <button key={p.id} onClick={() => setProgramId(p.id)}
-                style={{ background: chosenProgram === p.id ? 'var(--accent-soft)' : 'var(--bg-elev)', border: `1px solid ${chosenProgram === p.id ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 12, padding: 12, cursor: 'pointer', textAlign: 'left' }}>
-                <div className="row between">
-                  <strong>{p.name}</strong>
-                  {chosenProgram === p.id && <Check size={18} color="var(--accent)" />}
-                </div>
-                {p.description && <p className="muted mt-8" style={{ fontSize: '0.82rem' }}>{p.description}</p>}
-              </button>
-            ))}
-          </div>
-          <div className="field mt-16">
+          <div className="field" style={{ marginBottom: 16 }}>
             <label htmlFor="on-prot">Meta de proteína diaria (g)</label>
             <input id="on-prot" className="input num" type="number" value={protein} onChange={(e) => setProtein(e.target.value)} />
           </div>
+          <h3 className="card-title">Programa</h3>
+          <ProgramPicker
+            payload={{
+              goal, sex, age, height, weight, weekdays, protein,
+              equipment: gym ? ['Gimnasio (equipo completo)', ...EQUIPMENT] : equipment,
+            }}
+            selectedId={chosenProgram}
+            onSelect={setProgramId}
+          />
         </div>
 
         <button className="btn btn-primary btn-block btn-lg mt-16" onClick={finish} disabled={busy || weekdays.length === 0}>

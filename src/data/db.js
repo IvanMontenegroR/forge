@@ -244,6 +244,14 @@ export async function getStepsByDate(userId, date = todayStr()) {
   return data.reduce((s, r) => s + (r.steps || 0), 0)
 }
 
+// ---------- Programa: generar con IA / activar ----------
+export async function generateProgramAI(payload) {
+  return supabase.functions.invoke('generate-program', { body: payload })
+}
+export async function setActiveProgram(userId, programId) {
+  return updateProfile(userId, { active_program_id: programId })
+}
+
 // ---------- Admin: allowlist de registro ----------
 export async function listAllowedEmails() {
   const { data, error } = await supabase.from('allowed_emails').select('*').order('created_at', { ascending: false })
