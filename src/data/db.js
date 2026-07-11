@@ -172,6 +172,11 @@ export async function addNutrition(userId, row) {
   if (error) throw error
   return data
 }
+export async function updateNutrition(id, patch) {
+  const { data, error } = await supabase.from('nutrition_logs').update(patch).eq('id', id).select().single()
+  if (error) throw error
+  return data
+}
 export async function deleteNutrition(id) {
   const { error } = await supabase.from('nutrition_logs').delete().eq('id', id)
   if (error) throw error

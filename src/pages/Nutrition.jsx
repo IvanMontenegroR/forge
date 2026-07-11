@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus, X, Beef, Check, Camera, Flame, Sparkles, AlertCircle } from 'lucide-react'
+import { Plus, X, Beef, Check, Camera, Flame, Sparkles, AlertCircle, Pencil } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useProfile, useUserFoods, useNutritionToday, qk } from '../data/hooks'
+import { useProfile, useUserFoods, useNutritionByDate, qk } from '../data/hooks'
 import { supabase, MEAL_FUNCTION } from '../lib/supabase'
 import * as db from '../data/db'
-import { todayStr, weekStart } from '../lib/dates'
+import { todayStr, weekStart, addDays, WEEKDAY_NAMES, prettyDate } from '../lib/dates'
 import { Card, Ring, Spinner } from '../components/ui'
 
 const MEAL_MODELS = [
@@ -43,9 +43,11 @@ export default function Nutrition() {
   const qc = useQueryClient()
   const { data: profile } = useProfile()
   const { data: foods } = useUserFoods()
-  const { data: logs } = useNutritionToday()
+  const [logDate, setLogDate] = useState(todayStr())
+  const { data: logs } = useNutritionByDate(logDate)
   const [custom, setCustom] = useState({ name: '', protein_g: '', kcal: '', qty: 1 })
   const [showCustom, setShowCustom] = useState(false)
+  const [editing, setEditing] = useState(null) // { id, name, protein_g, kcal }
   const fileRef = useRef(null)
   const [photoFiles, setPhotoFiles] = useState([])
   const [photoNote, setPhotoNote] = useState('')
@@ -66,16 +68,33 @@ export default function Nutrition() {
   const kcalPct = Math.min(1, kcalTotal / kcalGoal)
   const kcalOver = kcalTotal > kcalGoal
 
+  // Días de la semana actual (lun–dom) para elegir a qué día se registra.
+  const weekDays = Array.from({ length: 7 }, (_, i) => ({ date: addDays(weekStart(), i), wd: i + 1 }))
+  const dayTitle = logDate === todayStr() ? 'Hoy' : prettyDate(logDate).replace(/^\w/, (c) => c.toUpperCase())
+
   function invalidate() {
-    qc.invalidateQueries({ queryKey: qk.nutrition(user.id, todayStr()) })
+    qc.invalidateQueries({ queryKey: qk.nutrition(user.id, logDate) })
     qc.invalidateQueries({ queryKey: qk.nutritionWeek(user.id, weekStart()) })
+    qc.invalidateQueries({ queryKey: ['nutritionRange'] }) // Progreso + rachas
   }
 
   async function add(food, qty = 1) {
     await db.addNutrition(user.id, {
       food_id: food.id || null, name: food.name,
       protein_g: Number(food.protein_g) || 0, kcal: food.kcal ? Number(food.kcal) : null, qty,
+      date: logDate,
     })
+    invalidate()
+  }
+
+  async function saveEdit() {
+    if (!editing?.name) return
+    await db.updateNutrition(editing.id, {
+      name: editing.name,
+      protein_g: Number(editing.protein_g) || 0,
+      kcal: editing.kcal === '' || editing.kcal == null ? null : Number(editing.kcal),
+    })
+    setEditing(null)
     invalidate()
   }
 
@@ -171,7 +190,26 @@ export default function Nutrition() {
 
   return (
     <div className="page">
-      <div className="page-head"><p className="eyebrow">Nutrición</p><h1>Hoy</h1></div>
+      <div className="page-head"><p className="eyebrow">Nutrición</p><h1>{dayTitle}</h1></div>
+
+      {/* Selector de día (semana lun–dom) — se registra en el día elegido */}
+      <div className="row gap-4" style={{ marginBottom: 14 }}>
+        {weekDays.map((d) => {
+          const sel = d.date === logDate
+          const isToday = d.date === todayStr()
+          return (
+            <button key={d.date} onClick={() => { setLogDate(d.date); setEditing(null) }}
+              style={{ flex: '1 0 0', minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, padding: '7px 2px', borderRadius: 10, cursor: 'pointer',
+                background: sel ? 'var(--accent-soft)' : 'var(--surface-2)',
+                border: `1px solid ${sel ? 'var(--accent)' : 'transparent'}`,
+                color: sel ? 'var(--accent)' : 'var(--text)' }}>
+              <span style={{ fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{WEEKDAY_NAMES[d.wd]}</span>
+              <span className="num" style={{ fontSize: '0.95rem', fontWeight: 800 }}>{d.date.slice(8)}</span>
+              <span style={{ width: 4, height: 4, borderRadius: 999, background: isToday ? (sel ? 'var(--accent)' : 'var(--text-faint)') : 'transparent' }} />
+            </button>
+          )
+        })}
+      </div>
 
       <Card>
         <div className="row gap-16">
@@ -288,10 +326,20 @@ export default function Nutrition() {
         )}
       </Card>
 
-      <Card title={`Hoy (${logs?.length || 0})`}>
+      <Card title={`${dayTitle} (${logs?.length || 0})`}>
         {logs?.length ? (
           <div className="col">
-            {logs.map((l) => (
+            {logs.map((l) => (editing?.id === l.id ? (
+              <div key={l.id} className="col gap-8" style={{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                <input className="input" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="Nombre" />
+                <div className="row gap-8">
+                  <input className="input num grow" inputMode="decimal" value={editing.protein_g} onChange={(e) => setEditing({ ...editing, protein_g: e.target.value })} placeholder="g prot" />
+                  <input className="input num grow" inputMode="numeric" value={editing.kcal} onChange={(e) => setEditing({ ...editing, kcal: e.target.value })} placeholder="kcal" />
+                  <button className="btn btn-primary btn-icon" onClick={saveEdit} aria-label="guardar"><Check size={18} /></button>
+                  <button className="btn btn-ghost btn-icon" onClick={() => setEditing(null)} aria-label="cancelar"><X size={18} /></button>
+                </div>
+              </div>
+            ) : (
               <div key={l.id} className="list-row">
                 <div className="grow">
                   <strong style={{ fontSize: '0.95rem' }}>{l.name}{l.qty > 1 ? ` ×${l.qty}` : ''}</strong>
@@ -299,11 +347,12 @@ export default function Nutrition() {
                     {Math.round(l.protein_g * l.qty)} g proteína{l.kcal ? ` · ${Math.round(l.kcal * l.qty)} kcal` : ''}
                   </span>
                 </div>
+                <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setEditing({ id: l.id, name: l.name, protein_g: l.protein_g ?? '', kcal: l.kcal ?? '' })} aria-label="editar"><Pencil size={15} /></button>
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => remove(l.id)} aria-label="quitar"><X size={16} /></button>
               </div>
-            ))}
+            )))}
           </div>
-        ) : <p className="faint center" style={{ padding: '12px 0' }}>Nada registrado todavía.</p>}
+        ) : <p className="faint center" style={{ padding: '12px 0' }}>Nada registrado {logDate === todayStr() ? 'todavía' : 'ese día'}.</p>}
       </Card>
 
       <p className="faint center mt-16" style={{ fontSize: '0.8rem' }}>

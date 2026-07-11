@@ -84,6 +84,11 @@ export function useNutritionToday() {
   const u = useUid(); const d = todayStr()
   return useQuery({ queryKey: qk.nutrition(u, d), queryFn: () => db.getNutritionByDate(u, d), enabled: !!u })
 }
+// Registros de nutrición de una fecha específica (YYYY-MM-DD).
+export function useNutritionByDate(date) {
+  const u = useUid()
+  return useQuery({ queryKey: qk.nutrition(u, date), queryFn: () => db.getNutritionByDate(u, date), enabled: !!u && !!date })
+}
 // Registros de nutrición en un rango arbitrario [from, to] (YYYY-MM-DD).
 export function useNutritionRange(from, to) {
   const u = useUid()
