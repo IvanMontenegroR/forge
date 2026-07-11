@@ -41,7 +41,8 @@ Reglas:
 - kcal y protein_g son enteros razonables por la porción mostrada o descrita (no por 100 g).
 - total_kcal y total_protein_g son la suma de los items.
 - Puede venir una foto, una descripción de texto, o ambas: combiná toda la info para estimar mejor.
-- "note": una frase breve con supuestos o el nivel de confianza.
+- Buscá activamente objetos de referencia para calcular el tamaño de la porción (cubiertos, mano, plato o vaso estándar, latas, botellas, monedas) y usalos para estimar mejor los gramos/volumen. Si el usuario menciona una referencia en el texto (ej. "la cuchara es sopera", "el vaso es de 500 ml"), priorizala.
+- "note": una frase breve con supuestos o el nivel de confianza; mencioná qué referencia usaste para la escala si hubo una.
 - Si no hay comida identificable, devolvé items vacío y explicá en "note".
 - Las estimaciones son aproximadas; no inventes precisión falsa.`
 
