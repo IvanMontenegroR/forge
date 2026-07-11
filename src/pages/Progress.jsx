@@ -1,9 +1,12 @@
 import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Trophy, Dumbbell, Beef, Flame, Check, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Trophy, Dumbbell, Beef, Flame, Check, AlertTriangle, ChevronLeft, ChevronRight, Pencil, X } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import * as db from '../data/db'
 import {
   useProfile, useProgramDays, useExerciseHistory, useSessions,
-  useNutritionRange,
+  useNutritionRange, qk,
 } from '../data/hooks'
 import {
   weekStart, addDays, todayStr, monthStart, monthEnd, monthLabel,
@@ -54,12 +57,34 @@ function aggregateByDate(rows) {
 }
 
 function NutritionProgress({ profile }) {
+  const { user } = useAuth()
+  const qc = useQueryClient()
   const proteinGoal = profile.protein_goal_g || 145
   const kcalGoal = profile.target_kcal || 2050
   const today = todayStr()
 
   const [weekOff, setWeekOff] = useState(0)
   const [openDate, setOpenDate] = useState(null)
+  const [editing, setEditing] = useState(null) // { id, name, protein_g, kcal }
+
+  function invalidateNut() {
+    qc.invalidateQueries({ queryKey: ['nutrition'] })
+    qc.invalidateQueries({ queryKey: ['nutritionRange'] })
+    qc.invalidateQueries({ queryKey: qk.nutritionWeek(user.id, weekStart()) })
+  }
+  async function saveEdit() {
+    if (!editing?.name) return
+    await db.updateNutrition(editing.id, {
+      name: editing.name,
+      protein_g: Number(editing.protein_g) || 0,
+      kcal: editing.kcal === '' || editing.kcal == null ? null : Number(editing.kcal),
+    })
+    setEditing(null); invalidateNut()
+  }
+  async function removeNut(id) {
+    await db.deleteNutrition(id)
+    setEditing(null); invalidateNut()
+  }
   const from = addDays(weekStart(), weekOff * 7)
   const to = addDays(from, 6)
   const { data: weekRows, isLoading } = useNutritionRange(from, to)
@@ -134,7 +159,17 @@ function NutritionProgress({ profile }) {
                   </button>
                   {open && (
                     <div className="col" style={{ paddingLeft: 50, marginTop: 6 }}>
-                      {items.length ? items.map((l) => (
+                      {items.length ? items.map((l) => (editing?.id === l.id ? (
+                        <div key={l.id} className="col gap-8" style={{ padding: '8px 0' }}>
+                          <input className="input" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} placeholder="Nombre" />
+                          <div className="row gap-8">
+                            <input className="input num grow" inputMode="decimal" value={editing.protein_g} onChange={(e) => setEditing({ ...editing, protein_g: e.target.value })} placeholder="g prot" />
+                            <input className="input num grow" inputMode="numeric" value={editing.kcal} onChange={(e) => setEditing({ ...editing, kcal: e.target.value })} placeholder="kcal" />
+                            <button className="btn btn-primary btn-icon" onClick={saveEdit} aria-label="guardar"><Check size={18} /></button>
+                            <button className="btn btn-ghost btn-icon" onClick={() => setEditing(null)} aria-label="cancelar"><X size={18} /></button>
+                          </div>
+                        </div>
+                      ) : (
                         <div key={l.id} className="list-row" style={{ padding: '8px 0' }}>
                           <div className="grow">
                             <strong style={{ fontSize: '0.9rem' }}>{l.name}{l.qty > 1 ? ` ×${l.qty}` : ''}</strong>
@@ -142,8 +177,10 @@ function NutritionProgress({ profile }) {
                               {Math.round(l.protein_g * l.qty)} g proteína{l.kcal ? ` · ${Math.round(l.kcal * l.qty)} kcal` : ''}
                             </span>
                           </div>
+                          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setEditing({ id: l.id, name: l.name, protein_g: l.protein_g ?? '', kcal: l.kcal ?? '' })} aria-label="editar"><Pencil size={15} /></button>
+                          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => removeNut(l.id)} aria-label="quitar"><X size={16} /></button>
                         </div>
-                      )) : <p className="faint" style={{ fontSize: '0.8rem', padding: '6px 0' }}>Nada registrado ese día.</p>}
+                      ))) : <p className="faint" style={{ fontSize: '0.8rem', padding: '6px 0' }}>Nada registrado ese día.</p>}
                     </div>
                   )}
                 </div>
