@@ -4,7 +4,7 @@ import { supabase, COACH_FUNCTION } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useProfile } from '../data/hooks'
 import * as db from '../data/db'
-import { todayStr } from '../lib/dates'
+import { todayStr, addDays } from '../lib/dates'
 import { Card, Spinner } from '../components/ui'
 
 const MODELS = [
@@ -24,34 +24,67 @@ export default function Coach() {
   const [error, setError] = useState(null)
 
   async function buildPayload() {
-    const [sessions, metrics, sleep, cardio, foodsToday] = await Promise.all([
-      db.listSessions(user.id, 8),
+    const today = todayStr()
+    const nutFrom = addDays(today, -29) // últimos 30 días de nutrición
+    const [sessions, metrics, sleep, cardio, nutRows] = await Promise.all([
+      db.listSessions(user.id, 20),
       db.listBodyMetrics(user.id),
-      db.listSleep(user.id, 7),
-      db.listCardio(user.id, 10),
-      db.getNutritionByDate(user.id, todayStr()),
+      db.listSleep(user.id, 14),
+      db.listCardio(user.id, 20),
+      db.getNutritionRange(user.id, nutFrom, today),
     ])
-    const completed = sessions.filter((s) => s.status === 'completed').slice(0, 4)
+    const completed = sessions.filter((s) => s.status === 'completed')
     const sessionDetails = []
-    for (const s of completed) {
+    for (const s of completed.slice(0, 6)) {
       const sets = await db.getSessionSets(s.id)
       sessionDetails.push({
         date: s.date, title: s.title, volume: s.total_volume_kg,
         sets: sets.filter((x) => x.done && !x.is_warmup).map((x) => ({ ex: x.exercise_id, w: x.weight_kg, reps: x.reps })),
       })
     }
+
+    // Nutrición: agregar por día (kcal y proteína)
+    const byDay = new Map()
+    for (const n of nutRows) {
+      const q = Number(n.qty || 1)
+      const cur = byDay.get(n.date) || { kcal: 0, prot: 0 }
+      cur.kcal += Number(n.kcal || 0) * q
+      cur.prot += Number(n.protein_g || 0) * q
+      byDay.set(n.date, cur)
+    }
+    const nutricion_diaria = [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))
+      .map(([fecha, v]) => ({ fecha, kcal: Math.round(v.kcal), proteina_g: Math.round(v.prot) }))
+    const kcalGoal = profile.target_kcal || 2050
+    const proteinGoal = profile.protein_goal_g || 145
+    const dias = nutricion_diaria.length
+    const resumen_nutricion = dias ? {
+      dias_registrados: dias,
+      promedio_kcal: Math.round(nutricion_diaria.reduce((a, d) => a + d.kcal, 0) / dias),
+      promedio_proteina_g: Math.round(nutricion_diaria.reduce((a, d) => a + d.proteina_g, 0) / dias),
+      dias_bajo_techo_kcal: nutricion_diaria.filter((d) => d.kcal <= kcalGoal).length,
+      dias_proteina_cumplida: nutricion_diaria.filter((d) => d.proteina_g >= proteinGoal).length,
+    } : null
+
     return {
+      hoy: today,
       perfil: {
-        objetivo: profile.goal, meta_proteina_g: profile.protein_goal_g,
-        meta_kcal: profile.target_kcal, meta_pasos: profile.step_goal,
+        objetivo: profile.goal, edad: profile.age, altura_cm: profile.height_cm,
+        peso_inicial_kg: profile.start_weight_kg,
+        meta_proteina_g: proteinGoal, meta_kcal: kcalGoal, meta_pasos: profile.step_goal,
         meta_sueno_h: profile.sleep_goal_hours, dias_entreno: profile.training_weekdays,
       },
-      sesiones_recientes: sessionDetails,
-      metricas: metrics.slice(-5),
+      entrenamiento: {
+        sesiones_completadas_total: completed.length,
+        ultima_sesion: completed[0]?.date || null,
+        sesiones_recientes: sessionDetails,
+      },
+      nutricion: {
+        resumen: resumen_nutricion,
+        por_dia: nutricion_diaria, // últimos 30 días
+      },
+      metricas: metrics.slice(-8),
       sueno: sleep,
       cardio,
-      proteina_hoy_g: foodsToday.reduce((a, n) => a + Number(n.protein_g) * Number(n.qty || 1), 0),
-      calorias_hoy: foodsToday.reduce((a, n) => a + Number(n.kcal || 0) * Number(n.qty || 1), 0),
     }
   }
 
