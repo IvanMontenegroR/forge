@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Plus, X, Beef, Check, Camera, Flame, Sparkles, AlertCircle, Pencil } from 'lucide-react'
+import { Plus, X, Beef, Check, Camera, Flame, Sparkles, AlertCircle, Pencil, Copy } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile, useUserFoods, useNutritionByDate, qk } from '../data/hooks'
 import { supabase, MEAL_FUNCTION } from '../lib/supabase'
@@ -110,6 +110,15 @@ export default function Nutrition() {
 
   async function remove(id) {
     await db.deleteNutrition(id)
+    invalidate()
+  }
+
+  async function duplicate(l) {
+    await db.addNutrition(user.id, {
+      food_id: l.food_id || null, name: l.name,
+      protein_g: Number(l.protein_g) || 0, kcal: l.kcal ?? null, qty: Number(l.qty) || 1,
+      date: logDate,
+    })
     invalidate()
   }
 
@@ -347,6 +356,7 @@ export default function Nutrition() {
                     {Math.round(l.protein_g * l.qty)} g proteína{l.kcal ? ` · ${Math.round(l.kcal * l.qty)} kcal` : ''}
                   </span>
                 </div>
+                <button className="btn btn-ghost btn-icon btn-sm" onClick={() => duplicate(l)} aria-label="duplicar"><Copy size={15} /></button>
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setEditing({ id: l.id, name: l.name, protein_g: l.protein_g ?? '', kcal: l.kcal ?? '' })} aria-label="editar"><Pencil size={15} /></button>
                 <button className="btn btn-ghost btn-icon btn-sm" onClick={() => remove(l.id)} aria-label="quitar"><X size={16} /></button>
               </div>

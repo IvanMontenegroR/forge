@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { Trophy, Dumbbell, Beef, Flame, Check, AlertTriangle, ChevronLeft, ChevronRight, Pencil, X } from 'lucide-react'
+import { Trophy, Dumbbell, Beef, Flame, Check, AlertTriangle, ChevronLeft, ChevronRight, Pencil, X, Copy } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import * as db from '../data/db'
 import {
@@ -84,6 +84,14 @@ function NutritionProgress({ profile }) {
   async function removeNut(id) {
     await db.deleteNutrition(id)
     setEditing(null); invalidateNut()
+  }
+  async function duplicateNut(l) {
+    await db.addNutrition(user.id, {
+      food_id: l.food_id || null, name: l.name,
+      protein_g: Number(l.protein_g) || 0, kcal: l.kcal ?? null, qty: Number(l.qty) || 1,
+      date: l.date,
+    })
+    invalidateNut()
   }
   const from = addDays(weekStart(), weekOff * 7)
   const to = addDays(from, 6)
@@ -177,6 +185,7 @@ function NutritionProgress({ profile }) {
                               {Math.round(l.protein_g * l.qty)} g proteína{l.kcal ? ` · ${Math.round(l.kcal * l.qty)} kcal` : ''}
                             </span>
                           </div>
+                          <button className="btn btn-ghost btn-icon btn-sm" onClick={() => duplicateNut(l)} aria-label="duplicar"><Copy size={15} /></button>
                           <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setEditing({ id: l.id, name: l.name, protein_g: l.protein_g ?? '', kcal: l.kcal ?? '' })} aria-label="editar"><Pencil size={15} /></button>
                           <button className="btn btn-ghost btn-icon btn-sm" onClick={() => removeNut(l.id)} aria-label="quitar"><X size={16} /></button>
                         </div>
