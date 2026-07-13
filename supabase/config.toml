@@ -14,3 +14,8 @@ verify_jwt = true
 [functions.generate-program]
 # Genera programa con IA (usa service_role para insertar). Verifica JWT.
 verify_jwt = true
+
+[functions.ingest-steps]
+# Ingesta de pasos desde Apple Shortcuts. Se autentica con steps_token
+# personal (no JWT), por eso verify_jwt = false.
+verify_jwt = false
