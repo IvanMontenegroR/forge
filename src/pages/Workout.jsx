@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Check, Plus, Trophy, TrendingUp, Info, Trash2, Film } from 'lucide-react'
+import { ChevronLeft, Check, Plus, Trophy, TrendingUp, Info, Trash2, Film, Timer, ChevronDown } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile, useProgramDays, useTodaySession, useSessions, useSessionSets, usePrevSets, qk } from '../data/hooks'
 import * as db from '../data/db'
@@ -67,14 +67,30 @@ function Header({ onBack, title, right }) {
   )
 }
 
+// Descanso recomendado: compuestos ~120s, aislamiento ~60s.
+function restFor(ex) {
+  const compound = ['pecho', 'espalda', 'piernas', 'hombros', 'gluteo', 'cuerpo completo']
+  return compound.includes(ex?.muscle_group) ? 120 : 60
+}
+function mmss(s) { return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` }
+
 function ActiveSession({ session, dayPlan, profile, navigate }) {
   const { user } = useAuth()
   const qc = useQueryClient()
   const { data: sessionSets } = useSessionSets(session.id)
   const [finishing, setFinishing] = useState(false)
+  const [openIdx, setOpenIdx] = useState(0)
+  const [rest, setRest] = useState(0)
 
   const exercises = dayPlan?.program_day_exercises || []
   const done = session.status === 'completed'
+
+  // Timer de descanso (cuenta regresiva).
+  useEffect(() => {
+    if (rest <= 0) return undefined
+    const id = setTimeout(() => setRest((s) => s - 1), 1000)
+    return () => clearTimeout(id)
+  }, [rest])
 
   const totalVolume = useMemo(() => {
     return (sessionSets || []).filter((s) => !s.is_warmup && s.done).reduce((sum, s) => sum + Number(s.weight_kg) * Number(s.reps), 0)
@@ -96,6 +112,18 @@ function ActiveSession({ session, dayPlan, profile, navigate }) {
     <div className="page">
       <Header onBack={() => navigate('/')} title={dayPlan?.name || 'Entrenamiento'} />
 
+      {rest > 0 && !done && (
+        <div className="card" style={{ borderColor: 'var(--accent)', marginBottom: 12, padding: 12 }}>
+          <div className="row between">
+            <span className="row gap-8" style={{ fontWeight: 700 }}><Timer size={18} color="var(--accent)" /> Descanso <span className="num" style={{ color: 'var(--accent)' }}>{mmss(rest)}</span></span>
+            <div className="row gap-8">
+              <button className="btn btn-ghost btn-sm" onClick={() => setRest((s) => s + 30)}>+30s</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setRest(0)}>Saltar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 16 }}>
         <Card style={{ padding: 12 }}><Stat label="Series hechas" value={completedSets} /></Card>
         <Card style={{ padding: 12 }}><Stat label="Volumen" value={Math.round(totalVolume)} suffix="kg" /></Card>
@@ -108,13 +136,19 @@ function ActiveSession({ session, dayPlan, profile, navigate }) {
         </div>
       )}
 
-      {exercises.map((pde) => (
+      {exercises.map((pde, idx) => (
         <ExerciseBlock
           key={pde.id}
           pde={pde}
           session={session}
           existing={(sessionSets || []).filter((s) => s.exercise_id === pde.exercise_id)}
           readOnly={done}
+          index={idx}
+          total={exercises.length}
+          expanded={done || idx === openIdx}
+          onToggle={() => setOpenIdx((cur) => (cur === idx ? -1 : idx))}
+          onSetDone={() => setRest(restFor(pde.exercise))}
+          onCompleted={() => setOpenIdx((cur) => (cur === idx && idx + 1 < exercises.length ? idx + 1 : cur))}
         />
       ))}
 
@@ -143,7 +177,7 @@ function Stat({ value, label, suffix }) {
   )
 }
 
-function ExerciseBlock({ pde, session, existing, readOnly }) {
+function ExerciseBlock({ pde, session, existing, readOnly, index, total, expanded, onToggle, onSetDone, onCompleted }) {
   const { user } = useAuth()
   const qc = useQueryClient()
   const ex = pde.exercise
@@ -200,17 +234,40 @@ function ExerciseBlock({ pde, session, existing, readOnly }) {
     qc.invalidateQueries({ queryKey: qk.sessionSets(session.id) })
   }
 
+  // Marcar/desmarcar serie: dispara el descanso y avanza si se completó el ejercicio.
+  async function toggleDone(idx) {
+    const willDone = !rows[idx].done
+    await persist(idx, { done: willDone })
+    if (willDone && !readOnly) {
+      onSetDone?.()
+      if (rows.every((r, i) => (i === idx ? true : r.done))) onCompleted?.()
+    }
+  }
+
+  const doneCount = rows.filter((r) => r.done).length
+  const allDone = rows.length > 0 && doneCount === rows.length
+
   return (
     <Card>
-      <div className="row between">
+      <button className="row between" onClick={onToggle}
+        style={{ width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left' }}>
         <div className="col" style={{ gap: 2 }}>
+          <span className="faint" style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Ejercicio {index + 1}/{total}{rows.length ? ` · ${doneCount}/${rows.length} series` : ''}
+          </span>
           <strong>{ex?.name}</strong>
           <span className="faint" style={{ fontSize: '0.78rem' }}>
             {targetSets} × {pde.rep_low === pde.rep_high ? pde.rep_low : `${pde.rep_low}–${pde.rep_high}`}{isTimed ? ' seg' : ' reps'}{pde.per_side ? ' c/lado' : ''}
           </span>
         </div>
-        {pde.notes && <span className="pill accent" style={{ fontSize: '0.7rem' }}>{pde.notes}</span>}
-      </div>
+        <div className="row gap-8">
+          {allDone && <Check size={20} color="var(--success)" />}
+          <ChevronDown size={20} color="var(--text-faint)" style={{ transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
+        </div>
+      </button>
+
+      {!expanded ? null : (<>
+      {pde.notes && <span className="pill accent mt-8" style={{ fontSize: '0.7rem' }}>{pde.notes}</span>}
 
       {ex?.demo_url && (
         <div className="mt-8">
@@ -248,7 +305,7 @@ function ExerciseBlock({ pde, session, existing, readOnly }) {
                 </div>
                 {!readOnly ? (
                   <button className="check" data-on={r.done} aria-label="serie hecha" aria-pressed={r.done}
-                    onClick={() => persist(idx, { done: !r.done })}><Check size={16} /></button>
+                    onClick={() => toggleDone(idx)}><Check size={16} /></button>
                 ) : (
                   <span className="check" data-on={r.done}><Check size={16} /></span>
                 )}
@@ -276,6 +333,7 @@ function ExerciseBlock({ pde, session, existing, readOnly }) {
           )}
         </div>
       )}
+      </>)}
     </Card>
   )
 }
