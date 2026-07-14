@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Check, Plus, Trophy, TrendingUp, Info, Trash2 } from 'lucide-react'
+import { ChevronLeft, Check, Plus, Trophy, TrendingUp, Info, Trash2, Film } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useProfile, useProgramDays, useTodaySession, useSessions, useSessionSets, usePrevSets, qk } from '../data/hooks'
 import * as db from '../data/db'
@@ -157,6 +157,8 @@ function ExerciseBlock({ pde, session, existing, readOnly }) {
   const prevAllTop = prev?.sets?.length >= targetSets && prev.sets.every((s) => Number(s.reps) >= pde.rep_high)
   const suggestWeight = prevAllTop ? prevTopWeight + 2.5 : prevTopWeight
 
+  const [showGif, setShowGif] = useState(false)
+
   // Filas locales (sincronizan con DB al editar)
   const [rows, setRows] = useState([])
   useEffect(() => {
@@ -209,6 +211,18 @@ function ExerciseBlock({ pde, session, existing, readOnly }) {
         </div>
         {pde.notes && <span className="pill accent" style={{ fontSize: '0.7rem' }}>{pde.notes}</span>}
       </div>
+
+      {ex?.demo_url && (
+        <div className="mt-8">
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowGif((v) => !v)} style={{ border: 'none', color: 'var(--accent)', paddingLeft: 0 }}>
+            <Film size={14} /> {showGif ? 'Ocultar demostración' : 'Ver cómo se hace'}
+          </button>
+          {showGif && (
+            <img src={ex.demo_url} alt={ex.name} loading="lazy"
+              style={{ width: '100%', maxWidth: 320, borderRadius: 12, marginTop: 8, background: 'var(--surface-2)', display: 'block' }} />
+          )}
+        </div>
+      )}
 
       {prevAllTop && !readOnly && (
         <div className="pill success mt-12" style={{ width: '100%', justifyContent: 'flex-start' }}>
