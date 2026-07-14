@@ -310,12 +310,12 @@ function ExerciseBlock({ pde, session, existing, readOnly, index, total, expande
                   <span className="check" data-on={r.done}><Check size={16} /></span>
                 )}
               </div>
-              <div className="row gap-12">
-                <div className="col grow gap-4">
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 12 }}>
+                <div className="col gap-4" style={{ minWidth: 0 }}>
                   <span className="faint" style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Peso (kg)</span>
                   <Stepper block value={r.weight} step={2.5} decimals={r.weight % 1 ? 1 : 0} onChange={(v) => persist(idx, { weight: v })} />
                 </div>
-                <div className="col grow gap-4">
+                <div className="col gap-4" style={{ minWidth: 0 }}>
                   <span className="faint" style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{isTimed ? 'Segundos' : 'Reps'}</span>
                   <Stepper block value={r.reps} step={isTimed ? 5 : 1} onChange={(v) => persist(idx, { reps: v })} />
                 </div>
