@@ -4,7 +4,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
-import { todayStr, weekStart, addDays, isoWeekday } from '../lib/dates'
+import { todayStr, weekStart, addDays } from '../lib/dates'
 import { computeStreak } from '../lib/streaks'
 import * as db from './db'
 
@@ -163,22 +163,48 @@ export function useNutritionStreak() {
   }, [rows, profile, goal, today])
 }
 
-// Racha de entreno: cuentan los días programados; descansos no rompen.
+// Racha de entreno por FRECUENCIA SEMANAL: una semana (lun–dom) "cuenta"
+// si se completó la meta de entrenos. La racha son semanas seguidas cumplidas.
+// La semana actual no rompe si todavía no llegó (está en curso).
 export function useTrainingStreak() {
   const { data: profile } = useProfile()
   const { data: sessions } = useSessions()
   const today = todayStr()
   return useMemo(() => {
-    if (!profile || !sessions) return { current: 0, longest: 0, days: [] }
-    const trainingDays = profile.training_weekdays || [1, 2, 5]
-    const doneDates = new Set(sessions.filter((s) => s.status === 'completed').map((s) => s.date))
-    const evalForDate = (d) => {
-      const wd = isoWeekday(new Date(d + 'T00:00:00'))
-      if (!trainingDays.includes(wd)) return 'skip'       // día de descanso
-      if (doneDates.has(d)) return 'good'                 // sesión completada
-      if (d >= today) return 'skip'                       // hoy/futuro aún pendiente
-      return 'bad'                                        // día programado pasado sin sesión
+    const goal = profile?.weekly_workout_goal || 3
+    if (!profile || !sessions) return { current: 0, longest: 0, goal, thisWeek: 0, weeks: [], unit: 'sem' }
+    const byWeek = new Map()
+    for (const s of sessions) {
+      if (s.status !== 'completed') continue
+      const w = weekStart(s.date)
+      byWeek.set(w, (byWeek.get(w) || 0) + 1)
     }
-    return computeStreak(evalForDate, { today })
+    const cur = weekStart(today)
+    const thisWeek = byWeek.get(cur) || 0
+
+    // Racha actual: semana en curso si ya cumplió + semanas previas seguidas cumplidas.
+    let current = thisWeek >= goal ? 1 : 0
+    let w = addDays(cur, -7)
+    while ((byWeek.get(w) || 0) >= goal) { current += 1; w = addDays(w, -7) }
+
+    // Récord: recorrer de la primera semana con datos hasta la actual.
+    const keys = [...byWeek.keys()].sort()
+    let longest = 0, run = 0
+    if (keys.length) {
+      let ptr = keys[0]
+      while (ptr <= cur) {
+        if ((byWeek.get(ptr) || 0) >= goal) { run += 1; longest = Math.max(longest, run) }
+        else if (ptr !== cur) { run = 0 } // la semana en curso incompleta no corta el récord
+        ptr = addDays(ptr, 7)
+      }
+    }
+    longest = Math.max(longest, current)
+
+    // Últimas 6 semanas para el detalle.
+    const weeks = []
+    let ws = cur
+    for (let i = 0; i < 6; i++) { weeks.push({ weekStart: ws, count: byWeek.get(ws) || 0, met: (byWeek.get(ws) || 0) >= goal }); ws = addDays(ws, -7) }
+
+    return { current, longest, goal, thisWeek, weeks, unit: 'sem' }
   }, [profile, sessions, today])
 }

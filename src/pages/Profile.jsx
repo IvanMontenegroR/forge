@@ -37,6 +37,7 @@ export default function Profile() {
       caffeine_cutoff_hour: Number(f.caffeine_cutoff_hour), training_weekdays: f.training_weekdays,
       active_program_id: f.active_program_id, photo_reminder_days: Number(f.photo_reminder_days),
       maintenance_kcal: Number(f.maintenance_kcal) || null, target_kcal: Number(f.target_kcal) || null,
+      weekly_workout_goal: Number(f.weekly_workout_goal) || 3,
     })
     qc.invalidateQueries({ queryKey: qk.profile(user.id) })
     setSaved(true); setTimeout(() => setSaved(false), 2000)
@@ -71,6 +72,7 @@ export default function Profile() {
 
       <Card title="Metas">
         <NumField label="Proteína diaria (g)" value={f.protein_goal_g} onChange={(v) => set({ protein_goal_g: v })} />
+        <NumField label="Entrenos por semana" value={f.weekly_workout_goal ?? 3} onChange={(v) => set({ weekly_workout_goal: v })} />
         <NumField label="Pasos diarios" value={f.step_goal} onChange={(v) => set({ step_goal: v })} />
         <NumField label="HIIT por semana" value={f.hiit_per_week} onChange={(v) => set({ hiit_per_week: v })} />
         <NumField label="Horas de sueño" value={f.sleep_goal_hours} onChange={(v) => set({ sleep_goal_hours: v })} step="0.5" />

@@ -1,16 +1,17 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Dumbbell, Moon, Beef, Pill, Footprints, Ruler, Sparkles, Camera,
-  ChevronRight, Play, CheckCircle2, Coffee, Flame,
+  ChevronRight, Play, CheckCircle2, Flame,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
   useProfile, useProgramDays, useTodaySession, useNutritionToday,
   useSupplements, useSupplementLogs, useStepsToday,
-  useBodyMetrics, useNutritionWeek, useTrainingStreak, useNutritionStreak,
+  useBodyMetrics, useNutritionWeek, useTrainingStreak, useNutritionStreak, useSessions,
 } from '../data/hooks'
 import { isoWeekday, todayStr, WEEKDAY_LONG, prettyDate, daysBetween } from '../lib/dates'
+import { nextRotationDay } from '../lib/program'
 import { Card, ProgressBar, Spinner } from '../components/ui'
 
 export default function Today() {
@@ -19,6 +20,7 @@ export default function Today() {
   const { data: profile } = useProfile()
   const { data: programDays } = useProgramDays(profile?.active_program_id)
   const { data: session } = useTodaySession()
+  const { data: sessions } = useSessions()
   const { data: nutrition } = useNutritionToday()
   const { data: supplements } = useSupplements()
   const { data: supLogs } = useSupplementLogs()
@@ -27,12 +29,10 @@ export default function Today() {
   const { data: nutWeek } = useNutritionWeek()
   const train = useTrainingStreak()
   const nut = useNutritionStreak()
+  const [pickDay, setPickDay] = useState(false)
 
   const wd = isoWeekday()
-  const todayPlan = useMemo(() => {
-    if (!programDays) return null
-    return programDays.find((d) => d.weekday === wd) || null
-  }, [programDays, wd])
+  const nextDay = useMemo(() => nextRotationDay(programDays, sessions), [programDays, sessions])
 
   if (!profile) return <div className="page"><Spinner /></div>
 
@@ -50,8 +50,8 @@ export default function Today() {
   const lastMetric = metrics?.length ? metrics[metrics.length - 1] : null
   const photoDue = lastMetric ? daysBetween(lastMetric.date, todayStr()) >= (profile.photo_reminder_days || 14) : true
 
-  const isOptional = todayPlan?.is_optional
   const sessionDone = session?.status === 'completed'
+  const dayList = [...(programDays || [])].sort((a, b) => a.order_index - b.order_index)
 
   return (
     <div className="page">
@@ -63,10 +63,10 @@ export default function Today() {
       {/* Rachas */}
       <Card title="Rachas" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/rachas')}>Ver</button>}>
         <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
-          <StreakTile icon={Beef} color="var(--danger)" label="Nutrición" current={nut.current} longest={nut.longest} />
-          <StreakTile icon={Dumbbell} color="var(--accent)" label="Entrenamiento" current={train.current} longest={train.longest} />
+          <StreakTile icon={Beef} color="var(--danger)" label="Nutrición" current={nut.current} unit="d" caption={`récord ${nut.longest}`} />
+          <StreakTile icon={Dumbbell} color="var(--accent)" label="Entreno" current={train.current} unit="sem" caption={`esta sem ${train.thisWeek}/${train.goal}`} />
         </div>
-        <p className="faint mt-12" style={{ fontSize: '0.76rem' }}>Podés fallar 2 días por semana sin cortar la racha. Nutrición cuenta días bajo tu techo de {kcalGoal} kcal.</p>
+        <p className="faint mt-12" style={{ fontSize: '0.76rem' }}>Nutrición: días seguidos bajo {kcalGoal} kcal (podés fallar 2/semana). Entreno: semanas seguidas con {train.goal}+ entrenos.</p>
       </Card>
 
       {/* Calorías (directamente debajo de las rachas) */}
@@ -109,38 +109,69 @@ export default function Today() {
         </div>
       </Card>
 
-      {/* Sesión de hoy */}
-      <Card title="Tu sesión de hoy">
-        {todayPlan ? (
+      {/* Entrenamiento (rutina rotativa) */}
+      <Card title="Entrenamiento">
+        {session ? (
           <>
             <div className="row between">
               <div className="row gap-12">
                 <span className="lead" style={{ width: 44, height: 44, background: 'var(--accent-soft)', color: 'var(--accent)' }}><Dumbbell size={22} /></span>
                 <div className="col" style={{ gap: 2 }}>
-                  <strong style={{ fontSize: '1.05rem' }}>{todayPlan.name}</strong>
-                  <span className="muted" style={{ fontSize: '0.84rem' }}>{todayPlan.focus}</span>
+                  <strong style={{ fontSize: '1.05rem' }}>{session.title || 'Entrenamiento'}</strong>
+                  <span className="muted" style={{ fontSize: '0.84rem' }}>{sessionDone ? 'Completada hoy' : 'En progreso'}</span>
                 </div>
               </div>
               {sessionDone && <CheckCircle2 size={24} color="var(--success)" />}
             </div>
-            {isOptional && <p className="pill warn mt-12" style={{ width: '100%', justifyContent: 'flex-start' }}>Día opcional — solo si tenés ganas</p>}
+            <button className="btn btn-primary btn-block btn-lg mt-16" onClick={() => navigate('/workout')}>
+              {sessionDone ? <><CheckCircle2 size={18} /> Ver sesión</> : <><Play size={18} /> Continuar</>}
+            </button>
+          </>
+        ) : nextDay ? (
+          <>
+            <div className="row gap-12">
+              <span className="lead" style={{ width: 44, height: 44, background: 'var(--accent-soft)', color: 'var(--accent)' }}><Dumbbell size={22} /></span>
+              <div className="col" style={{ gap: 2 }}>
+                <span className="faint" style={{ fontSize: '0.74rem', fontWeight: 700, textTransform: 'uppercase' }}>Próximo</span>
+                <strong style={{ fontSize: '1.05rem' }}>{nextDay.name}</strong>
+                <span className="muted" style={{ fontSize: '0.84rem' }}>{nextDay.focus}</span>
+              </div>
+            </div>
             <div className="row wrap gap-8 mt-12">
-              {todayPlan.program_day_exercises?.slice(0, 4).map((pde) => (
+              {nextDay.program_day_exercises?.slice(0, 4).map((pde) => (
                 <span key={pde.id} className="pill">{pde.exercise?.name}</span>
               ))}
-              {todayPlan.program_day_exercises?.length > 4 && (
-                <span className="pill">+{todayPlan.program_day_exercises.length - 4}</span>
+              {nextDay.program_day_exercises?.length > 4 && (
+                <span className="pill">+{nextDay.program_day_exercises.length - 4}</span>
               )}
             </div>
             <button className="btn btn-primary btn-block btn-lg mt-16" onClick={() => navigate('/workout')}>
-              {sessionDone ? <><CheckCircle2 size={18} /> Ver sesión</> : session ? <><Play size={18} /> Continuar</> : <><Play size={18} /> Empezar entrenamiento</>}
+              <Play size={18} /> Empezar entrenamiento
             </button>
+            <button className="btn btn-ghost btn-block btn-sm mt-8" onClick={() => setPickDay((v) => !v)} style={{ justifyContent: 'space-between' }}>
+              <span>Elegir otro día</span>
+              <ChevronRight size={16} style={{ transform: pickDay ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }} />
+            </button>
+            {pickDay && (
+              <div className="col gap-8 mt-8">
+                {dayList.map((d) => (
+                  <button key={d.id} className="list-row" onClick={() => navigate(`/workout?day=${d.id}`)}
+                    style={{ background: d.id === nextDay.id ? 'var(--accent-soft)' : 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 10, padding: 12, cursor: 'pointer', textAlign: 'left' }}>
+                    <div className="grow">
+                      <strong style={{ fontSize: '0.9rem' }}>{d.name}</strong>
+                      {d.focus && <span className="faint" style={{ display: 'block', fontSize: '0.78rem' }}>{d.focus}</span>}
+                    </div>
+                    {d.id === nextDay.id && <span className="pill accent" style={{ fontSize: '0.66rem' }}>próximo</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
         ) : (
           <div className="center" style={{ padding: '8px 0' }}>
-            <span className="lead" style={{ width: 48, height: 48, margin: '0 auto 10px', background: 'var(--info-soft)', color: 'var(--info)' }}><Coffee size={24} /></span>
-            <strong>Día de descanso</strong>
-            <p className="muted mt-8" style={{ fontSize: '0.88rem' }}>La recuperación es donde crece el músculo. Los días de descanso no rompen tu racha de entreno.</p>
+            <strong>No tenés un programa activo</strong>
+            <p className="muted mt-8" style={{ fontSize: '0.88rem' }}>Generá o elegí uno desde tu perfil para arrancar.</p>
+            <button className="btn btn-ghost btn-block mt-16" onClick={() => navigate('/profile')}>Ir a Programa</button>
           </div>
         )}
       </Card>
@@ -181,16 +212,16 @@ function kcalVariant(value, max) {
   return 'info'
 }
 
-function StreakTile({ icon: Icon, color, label, current, longest }) {
+function StreakTile({ icon: Icon, color, label, current, unit = 'd', caption }) {
   const on = current > 0
   return (
     <div className="row gap-12" style={{ background: 'var(--bg-elev)', borderRadius: 12, padding: 12 }}>
       <Icon size={22} color={on ? color : 'var(--text-faint)'} />
       <div className="col" style={{ gap: 0 }}>
         <span className="num row gap-4" style={{ fontSize: '1.5rem', fontWeight: 800, color: on ? color : 'var(--text)', alignItems: 'baseline' }}>
-          {on && <Flame size={15} color={color} />}{current}<span className="faint" style={{ fontSize: '0.8rem' }}>d</span>
+          {on && <Flame size={15} color={color} />}{current}<span className="faint" style={{ fontSize: '0.8rem' }}>{unit}</span>
         </span>
-        <span className="faint" style={{ fontSize: '0.72rem' }}>{label} · récord {longest}</span>
+        <span className="faint" style={{ fontSize: '0.72rem' }}>{label}{caption ? ` · ${caption}` : ''}</span>
       </div>
     </div>
   )
@@ -207,7 +238,6 @@ function QuickTile({ icon: Icon, color, label, value, progress, onClick }) {
         <div className="num" style={{ fontSize: '1.15rem', fontWeight: 800 }}>{value}</div>
         <div className="faint" style={{ fontSize: '0.78rem', fontWeight: 600 }}>{label}</div>
       </div>
-      {/* slot de barra siempre presente (oculto si no hay progreso) → todas las tiles igual alto */}
       <div className="bar mt-8" style={{ height: 6, visibility: progress != null ? 'visible' : 'hidden' }}>
         <span style={{ width: `${Math.min(100, (progress || 0) * 100)}%`, background: color }} />
       </div>

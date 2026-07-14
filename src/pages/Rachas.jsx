@@ -1,6 +1,6 @@
-import { Dumbbell, Beef, Flame } from 'lucide-react'
+import { Dumbbell, Beef, Flame, Check } from 'lucide-react'
 import { useProfile, useTrainingStreak, useNutritionStreak } from '../data/hooks'
-import { Card, Spinner } from '../components/ui'
+import { Card, Spinner, ProgressBar } from '../components/ui'
 
 export default function Rachas() {
   const { data: profile } = useProfile()
@@ -13,35 +13,31 @@ export default function Rachas() {
     <div className="page">
       <div className="page-head"><p className="eyebrow">Rachas</p><h1>Constancia</h1></div>
 
-      <StreakCard
-        title="Nutrición" icon={Beef} color="var(--danger)" streak={nut}
-        caption={`Días en los que te quedaste bajo tu techo de ${profile.target_kcal || 2050} kcal. Podés excederte hasta 2 días por semana sin cortarla.`}
-      />
-      <StreakCard
-        title="Entrenamiento" icon={Dumbbell} color="var(--accent)" streak={train}
-        caption="Cuenta tus días programados (lun/mar/vie). Los descansos no rompen la racha; podés faltar hasta 2 días programados por semana."
-      />
+      {/* Nutrición: días */}
+      <NutritionStreakCard streak={nut} kcalGoal={profile.target_kcal || 2050} />
 
-      <div className="row gap-16 mt-8" style={{ justifyContent: 'center', fontSize: '0.74rem' }}>
+      <div className="row gap-16 mt-8" style={{ justifyContent: 'center', fontSize: '0.74rem', marginBottom: 16 }}>
         <span className="row gap-4"><Dot status="good" mini /> Cumplido</span>
         <span className="row gap-4"><Dot status="bad" mini /> Fallado</span>
         <span className="row gap-4"><Dot status="skip" mini /> Descanso/sin dato</span>
       </div>
+
+      {/* Entrenamiento: semanas por frecuencia */}
+      <TrainingStreakCard streak={train} />
     </div>
   )
 }
 
-function StreakCard({ title, icon: Icon, color, streak, caption }) {
+function NutritionStreakCard({ streak, kcalGoal }) {
   const on = streak.current > 0
-  // últimos ~28 días en orden cronológico (el motor los devuelve hoy→atrás)
   const recent = (streak.days || []).slice(0, 28).reverse()
   return (
-    <Card title={title}>
+    <Card title="Nutrición">
       <div className="row gap-16" style={{ alignItems: 'center', marginBottom: 14 }}>
-        <Icon size={28} color={on ? color : 'var(--text-faint)'} />
+        <Beef size={28} color={on ? 'var(--danger)' : 'var(--text-faint)'} />
         <div className="col" style={{ gap: 2 }}>
-          <span className="num row gap-6" style={{ fontSize: '2rem', fontWeight: 800, color: on ? color : 'var(--text)', alignItems: 'baseline' }}>
-            {on && <Flame size={20} color={color} />}{streak.current}<span className="faint" style={{ fontSize: '1rem' }}>días</span>
+          <span className="num row gap-6" style={{ fontSize: '2rem', fontWeight: 800, color: on ? 'var(--danger)' : 'var(--text)', alignItems: 'baseline' }}>
+            {on && <Flame size={20} color="var(--danger)" />}{streak.current}<span className="faint" style={{ fontSize: '1rem' }}>días</span>
           </span>
           <span className="faint" style={{ fontSize: '0.8rem' }}>Récord: {streak.longest} días</span>
         </div>
@@ -49,7 +45,45 @@ function StreakCard({ title, icon: Icon, color, streak, caption }) {
       <div className="row wrap gap-4">
         {recent.map((d) => <Dot key={d.date} status={d.status} date={d.date} />)}
       </div>
-      <p className="faint mt-12" style={{ fontSize: '0.76rem' }}>{caption}</p>
+      <p className="faint mt-12" style={{ fontSize: '0.76rem' }}>
+        Días en los que te quedaste bajo tu techo de {kcalGoal} kcal. Podés excederte hasta 2 días por semana sin cortarla.
+      </p>
+    </Card>
+  )
+}
+
+function TrainingStreakCard({ streak }) {
+  const on = streak.current > 0
+  const weeks = [...(streak.weeks || [])].reverse() // cronológico
+  return (
+    <Card title="Entrenamiento">
+      <div className="row gap-16" style={{ alignItems: 'center', marginBottom: 14 }}>
+        <Dumbbell size={28} color={on ? 'var(--accent)' : 'var(--text-faint)'} />
+        <div className="col" style={{ gap: 2 }}>
+          <span className="num row gap-6" style={{ fontSize: '2rem', fontWeight: 800, color: on ? 'var(--accent)' : 'var(--text)', alignItems: 'baseline' }}>
+            {on && <Flame size={20} color="var(--accent)" />}{streak.current}<span className="faint" style={{ fontSize: '1rem' }}>{streak.current === 1 ? 'semana' : 'semanas'}</span>
+          </span>
+          <span className="faint" style={{ fontSize: '0.8rem' }}>Récord: {streak.longest} · esta semana {streak.thisWeek}/{streak.goal}</span>
+        </div>
+      </div>
+
+      <div className="col gap-8">
+        {weeks.map((w) => (
+          <div key={w.weekStart} className="col gap-4">
+            <div className="row between" style={{ fontSize: '0.78rem' }}>
+              <span className="row gap-4">
+                {w.met ? <Check size={13} color="var(--success)" /> : <span style={{ width: 13 }} />}
+                Semana del {w.weekStart.slice(8)}/{w.weekStart.slice(5, 7)}
+              </span>
+              <span className="faint num">{w.count}/{streak.goal}</span>
+            </div>
+            <ProgressBar value={w.count} max={streak.goal} variant={w.met ? 'success' : ''} />
+          </div>
+        ))}
+      </div>
+      <p className="faint mt-12" style={{ fontSize: '0.76rem' }}>
+        Rutina rotativa: entrenás cualquier día y seguís la secuencia. La racha cuenta semanas seguidas con {streak.goal}+ entrenos.
+      </p>
     </Card>
   )
 }

@@ -1,59 +1,51 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Check, Plus, Trophy, TrendingUp, Info, Trash2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useProfile, useProgramDays, useTodaySession, useSessionSets, usePrevSets, qk } from '../data/hooks'
+import { useProfile, useProgramDays, useTodaySession, useSessions, useSessionSets, usePrevSets, qk } from '../data/hooks'
 import * as db from '../data/db'
-import { isoWeekday, todayStr } from '../lib/dates'
+import { todayStr } from '../lib/dates'
+import { nextRotationDay } from '../lib/program'
 import { Card, Spinner, Stepper } from '../components/ui'
 
 export default function Workout() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { user } = useAuth()
   const qc = useQueryClient()
   const { data: profile } = useProfile()
   const { data: programDays } = useProgramDays(profile?.active_program_id)
   const { data: session, isLoading } = useTodaySession()
+  const { data: sessions } = useSessions()
   const [creating, setCreating] = useState(false)
 
-  const wd = isoWeekday()
-  const todayPlan = useMemo(() => programDays?.find((d) => d.weekday === wd) || null, [programDays, wd])
+  // Día objetivo: el pedido por ?day=… o el próximo en la rotación.
+  const dayParam = searchParams.get('day')
+  const targetDay = useMemo(() => {
+    if (dayParam && programDays) return programDays.find((d) => d.id === dayParam) || null
+    return nextRotationDay(programDays, sessions)
+  }, [dayParam, programDays, sessions])
 
-  // Auto-crear la sesión del día si toca entrenar y no existe.
+  // Auto-crear la sesión del día objetivo si no existe una hoy.
   useEffect(() => {
-    if (!user || isLoading || session || creating) return
-    if (todayPlan) {
-      setCreating(true)
-      db.createSession(user.id, { programDayId: todayPlan.id, title: todayPlan.name })
-        .then(() => qc.invalidateQueries({ queryKey: qk.session(user.id, todayStr()) }))
-        .finally(() => setCreating(false))
-    }
-  }, [user, isLoading, session, todayPlan, creating, qc])
-
-  async function startFreeDay(dayId, title) {
+    if (!user || isLoading || session || creating || !targetDay) return
     setCreating(true)
-    await db.createSession(user.id, { programDayId: dayId, title })
-    await qc.invalidateQueries({ queryKey: qk.session(user.id, todayStr()) })
-    setCreating(false)
-  }
+    db.createSession(user.id, { programDayId: targetDay.id, title: targetDay.name })
+      .then(() => qc.invalidateQueries({ queryKey: qk.session(user.id, todayStr()) }))
+      .finally(() => setCreating(false))
+  }, [user, isLoading, session, targetDay, creating, qc])
 
   if (isLoading || creating) return <div className="page"><Spinner label="Preparando la sesión…" /></div>
 
-  // Día sin sesión programada y sin sesión creada → elegir qué hacer.
-  if (!session && !todayPlan) {
+  // Sin programa con días → nada para entrenar.
+  if (!session && !targetDay) {
     return (
       <div className="page">
-        <Header onBack={() => navigate('/')} title="Entrenamiento libre" />
+        <Header onBack={() => navigate('/')} title="Entrenamiento" />
         <Card>
-          <p className="muted">Hoy no toca sesión programada. ¿Querés hacer una igual? Elegí un día del programa:</p>
-          <div className="col gap-8 mt-12">
-            {programDays?.map((d) => (
-              <button key={d.id} className="btn btn-ghost btn-block" onClick={() => startFreeDay(d.id, d.name)} style={{ justifyContent: 'space-between' }}>
-                <span>{d.name}</span><span className="faint">{d.focus}</span>
-              </button>
-            ))}
-          </div>
+          <p className="muted">No tenés un programa activo con días cargados. Generá o elegí uno desde tu perfil.</p>
+          <button className="btn btn-ghost btn-block mt-12" onClick={() => navigate('/profile')}>Ir a Programa</button>
         </Card>
       </div>
     )
@@ -61,7 +53,7 @@ export default function Workout() {
 
   if (!session) return <div className="page"><Spinner /></div>
 
-  const dayPlan = programDays?.find((d) => d.id === session.program_day_id) || todayPlan
+  const dayPlan = programDays?.find((d) => d.id === session.program_day_id) || targetDay
   return <ActiveSession session={session} dayPlan={dayPlan} profile={profile} navigate={navigate} />
 }
 
