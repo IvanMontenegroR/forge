@@ -313,11 +313,11 @@ function ExerciseBlock({ pde, session, existing, readOnly, index, total, expande
               <div className="row gap-12">
                 <div className="col grow gap-4">
                   <span className="faint" style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Peso (kg)</span>
-                  <Stepper value={r.weight} step={2.5} decimals={r.weight % 1 ? 1 : 0} onChange={(v) => persist(idx, { weight: v })} />
+                  <Stepper block value={r.weight} step={2.5} decimals={r.weight % 1 ? 1 : 0} onChange={(v) => persist(idx, { weight: v })} />
                 </div>
                 <div className="col grow gap-4">
                   <span className="faint" style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{isTimed ? 'Segundos' : 'Reps'}</span>
-                  <Stepper value={r.reps} step={isTimed ? 5 : 1} onChange={(v) => persist(idx, { reps: v })} />
+                  <Stepper block value={r.reps} step={isTimed ? 5 : 1} onChange={(v) => persist(idx, { reps: v })} />
                 </div>
               </div>
             </div>

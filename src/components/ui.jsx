@@ -76,11 +76,11 @@ export function Ring({ progress = 0, size = 30, stroke = 4, color = 'var(--accen
   )
 }
 
-export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, decimals = 0 }) {
+export function Stepper({ value, onChange, step = 1, min = 0, max = 9999, decimals = 0, block = false }) {
   const fmt = (n) => (decimals ? Number(n).toFixed(decimals) : String(n))
   const clamp = (n) => Math.max(min, Math.min(max, n))
   return (
-    <div className="stepper">
+    <div className={`stepper${block ? ' block' : ''}`}>
       <button type="button" aria-label="menos" onClick={() => onChange(clamp(Number(value) - step))}>−</button>
       <input className="num" inputMode="decimal" value={fmt(value)}
         onChange={(e) => { const n = parseFloat(e.target.value); if (!Number.isNaN(n)) onChange(clamp(n)) }} />
