@@ -230,34 +230,39 @@ function ExerciseBlock({ pde, session, existing, readOnly }) {
         </div>
       )}
 
-      <div className="col gap-8 mt-12">
-        <div className="row faint" style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4 }}>
-          <span style={{ width: 28 }}>#</span>
-          <span style={{ width: 92 }}>Anterior</span>
-          <span className="grow center">Kg</span>
-          <span className="grow center">{isTimed ? 'Seg' : 'Reps'}</span>
-          <span style={{ width: 40 }}></span>
+      {!prev && !readOnly && (
+        <div className="pill info mt-12" style={{ width: '100%', justifyContent: 'flex-start' }}>
+          <Info size={14} /> Primera vez: elegí un peso donde la última repetición te cueste (que te queden ~2 en reserva), no el mínimo. Ajustás en la próxima.
         </div>
+      )}
+
+      <div className="col gap-10 mt-12">
         {rows.map((r, idx) => {
           const prevSet = prev?.sets?.[idx]
           return (
-            <div key={idx} className="row gap-8">
-              <span className="num faint" style={{ width: 28, textAlign: 'center', fontWeight: 700 }}>{r.set_number}</span>
-              <span className="num faint" style={{ width: 92, fontSize: '0.82rem' }}>
-                {prevSet ? `${Number(prevSet.weight_kg)}×${prevSet.reps}` : '–'}
-              </span>
-              <div className="grow center">
-                <Stepper value={r.weight} step={2.5} decimals={r.weight % 1 ? 1 : 0} onChange={(v) => persist(idx, { weight: v })} />
+            <div key={idx} className="col gap-8" style={{ padding: '10px 0', borderBottom: idx < rows.length - 1 ? '1px solid var(--border)' : 'none' }}>
+              <div className="row between">
+                <div className="col" style={{ gap: 0 }}>
+                  <strong style={{ fontSize: '0.92rem' }}>Serie {r.set_number}</strong>
+                  <span className="faint num" style={{ fontSize: '0.74rem' }}>Anterior: {prevSet ? `${Number(prevSet.weight_kg)} kg × ${prevSet.reps}` : '—'}</span>
+                </div>
+                {!readOnly ? (
+                  <button className="check" data-on={r.done} aria-label="serie hecha" aria-pressed={r.done}
+                    onClick={() => persist(idx, { done: !r.done })}><Check size={16} /></button>
+                ) : (
+                  <span className="check" data-on={r.done}><Check size={16} /></span>
+                )}
               </div>
-              <div className="grow center">
-                <Stepper value={r.reps} step={isTimed ? 5 : 1} onChange={(v) => persist(idx, { reps: v })} />
+              <div className="row gap-12">
+                <div className="col grow gap-4">
+                  <span className="faint" style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Peso (kg)</span>
+                  <Stepper value={r.weight} step={2.5} decimals={r.weight % 1 ? 1 : 0} onChange={(v) => persist(idx, { weight: v })} />
+                </div>
+                <div className="col grow gap-4">
+                  <span className="faint" style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{isTimed ? 'Segundos' : 'Reps'}</span>
+                  <Stepper value={r.reps} step={isTimed ? 5 : 1} onChange={(v) => persist(idx, { reps: v })} />
+                </div>
               </div>
-              {!readOnly ? (
-                <button className="check" data-on={r.done} aria-label="serie hecha" aria-pressed={r.done}
-                  onClick={() => persist(idx, { done: !r.done })}><Check size={16} /></button>
-              ) : (
-                <span className="check" data-on={r.done}><Check size={16} /></span>
-              )}
             </div>
           )
         })}
