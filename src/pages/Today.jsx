@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import {
   useProfile, useProgramDays, useTodaySession, useNutritionToday,
   useSupplements, useSupplementLogs, useStepsToday,
-  useBodyMetrics, useNutritionWeek, useTrainingStreak, useNutritionStreak, useSessions,
+  useBodyMetrics, useTrainingStreak, useNutritionStreak, useSessions,
 } from '../data/hooks'
 import { isoWeekday, todayStr, WEEKDAY_LONG, prettyDate, daysBetween } from '../lib/dates'
 import { nextRotationDay } from '../lib/program'
@@ -26,7 +26,6 @@ export default function Today() {
   const { data: supLogs } = useSupplementLogs()
   const { data: steps } = useStepsToday()
   const { data: metrics } = useBodyMetrics()
-  const { data: nutWeek } = useNutritionWeek()
   const train = useTrainingStreak()
   const nut = useNutritionStreak()
   const [pickDay, setPickDay] = useState(false)
@@ -40,10 +39,6 @@ export default function Today() {
   const proteinGoal = profile.protein_goal_g || 145
   const kcalToday = (nutrition || []).reduce((s, n) => s + Number(n.kcal || 0) * Number(n.qty || 1), 0)
   const kcalGoal = profile.target_kcal || 2050
-  const kcalWeek = nutWeek?.kcal || 0
-  const kcalWeekGoal = kcalGoal * 7
-  const proteinWeek = nutWeek?.protein_g || 0
-  const proteinWeekGoal = proteinGoal * 7
   const activeSupps = (supplements || []).filter((s) => s.active)
   const suppsTaken = (supLogs || []).filter((l) => l.taken).length
   const stepGoal = profile.step_goal || 9000
@@ -60,51 +55,51 @@ export default function Today() {
         <h1>Hola, {profile.full_name?.split(' ')[0] || 'crack'}</h1>
       </div>
 
-      {/* Rachas */}
+      {/* Rachas: cuadritos de nutrición + barra de la semana actual de entreno */}
       <Card title="Rachas" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/rachas')}>Ver</button>}>
-        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
-          <StreakTile icon={Beef} color="var(--danger)" label="Nutrición" current={nut.current} unit="d" caption={`récord ${nut.longest}`} />
-          <StreakTile icon={Dumbbell} color="var(--accent)" label="Entreno" current={train.current} unit="sem" caption={`esta sem ${train.thisWeek}/${train.goal}`} />
+        {/* Nutrición */}
+        <div className="row between" style={{ marginBottom: 10 }}>
+          <div className="row gap-10">
+            <Beef size={22} color={nut.current > 0 ? 'var(--danger)' : 'var(--text-faint)'} />
+            <span className="num row gap-4" style={{ fontSize: '1.4rem', fontWeight: 800, color: nut.current > 0 ? 'var(--danger)' : 'var(--text)', alignItems: 'baseline' }}>
+              {nut.current > 0 && <Flame size={15} color="var(--danger)" />}{nut.current}<span className="faint" style={{ fontSize: '0.8rem' }}>días</span>
+            </span>
+          </div>
+          <span className="faint" style={{ fontSize: '0.74rem' }}>Nutrición · récord {nut.longest}</span>
         </div>
-        <p className="faint mt-12" style={{ fontSize: '0.76rem' }}>Nutrición: días seguidos bajo {kcalGoal} kcal (podés fallar 2/semana). Entreno: semanas seguidas con {train.goal}+ entrenos.</p>
+        <div className="row wrap gap-4">
+          {(nut.days || []).slice(0, 21).reverse().map((d) => <Dot key={d.date} status={d.status} date={d.date} />)}
+        </div>
+
+        {/* Entrenamiento: barra de la semana actual */}
+        <div className="row between" style={{ marginTop: 18, marginBottom: 8 }}>
+          <div className="row gap-10">
+            <Dumbbell size={22} color={train.current > 0 ? 'var(--accent)' : 'var(--text-faint)'} />
+            <span className="num row gap-4" style={{ fontSize: '1.4rem', fontWeight: 800, color: train.current > 0 ? 'var(--accent)' : 'var(--text)', alignItems: 'baseline' }}>
+              {train.current > 0 && <Flame size={15} color="var(--accent)" />}{train.current}<span className="faint" style={{ fontSize: '0.8rem' }}>{train.current === 1 ? 'sem' : 'sem'}</span>
+            </span>
+          </div>
+          <span className="faint num" style={{ fontSize: '0.78rem' }}>Esta semana {train.thisWeek}/{train.goal}</span>
+        </div>
+        <ProgressBar value={train.thisWeek} max={train.goal} variant={train.thisWeek >= train.goal ? 'success' : 'accent'} />
       </Card>
 
-      {/* Calorías (directamente debajo de las rachas) */}
-      <Card title="Calorías" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/nutrition')}>Registrar</button>}>
+      {/* Nutrición hoy: calorías + proteína (solo hoy) */}
+      <Card title="Nutrición hoy" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/nutrition')}>Registrar</button>}>
         <div className="col gap-12">
           <div className="col gap-4">
             <div className="row between">
-              <span className="row gap-8" style={{ fontSize: '0.88rem', fontWeight: 600 }}><Flame size={15} color="var(--info)" /> Hoy</span>
+              <span className="row gap-8" style={{ fontSize: '0.88rem', fontWeight: 600 }}><Flame size={15} color="var(--info)" /> Calorías</span>
               <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalToday)} / {kcalGoal} kcal</span>
             </div>
-            <ProgressBar value={kcalToday} max={kcalGoal} variant="info" />
+            <ProgressBar value={kcalToday} max={kcalGoal} variant={kcalVariant(kcalToday, kcalGoal)} />
           </div>
           <div className="col gap-4">
             <div className="row between">
-              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Semana (lun–dom)</span>
-              <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(kcalWeek)} / {kcalWeekGoal} kcal</span>
-            </div>
-            <ProgressBar value={kcalWeek} max={kcalWeekGoal} variant={kcalVariant(kcalWeek, kcalWeekGoal)} />
-          </div>
-        </div>
-      </Card>
-
-      {/* Proteína (mismo formato que calorías) */}
-      <Card title="Proteína" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/nutrition')}>Registrar</button>}>
-        <div className="col gap-12">
-          <div className="col gap-4">
-            <div className="row between">
-              <span className="row gap-8" style={{ fontSize: '0.88rem', fontWeight: 600 }}><Beef size={15} color="var(--danger)" /> Hoy</span>
+              <span className="row gap-8" style={{ fontSize: '0.88rem', fontWeight: 600 }}><Beef size={15} color="var(--danger)" /> Proteína</span>
               <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(proteinToday)} / {proteinGoal} g</span>
             </div>
             <ProgressBar value={proteinToday} max={proteinGoal} variant={proteinToday >= proteinGoal ? 'success' : ''} />
-          </div>
-          <div className="col gap-4">
-            <div className="row between">
-              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Semana (lun–dom)</span>
-              <span className="faint num" style={{ fontSize: '0.82rem' }}>{Math.round(proteinWeek)} / {proteinWeekGoal} g</span>
-            </div>
-            <ProgressBar value={proteinWeek} max={proteinWeekGoal} variant={proteinWeek >= proteinWeekGoal ? 'success' : ''} />
           </div>
         </div>
       </Card>
@@ -212,18 +207,12 @@ function kcalVariant(value, max) {
   return 'info'
 }
 
-function StreakTile({ icon: Icon, color, label, current, unit = 'd', caption }) {
-  const on = current > 0
+function Dot({ status, date }) {
+  const bg = status === 'good' ? 'var(--success)' : status === 'bad' ? 'var(--warn)' : 'var(--surface-3)'
   return (
-    <div className="row gap-12" style={{ background: 'var(--bg-elev)', borderRadius: 12, padding: 12 }}>
-      <Icon size={22} color={on ? color : 'var(--text-faint)'} />
-      <div className="col" style={{ gap: 0 }}>
-        <span className="num row gap-4" style={{ fontSize: '1.5rem', fontWeight: 800, color: on ? color : 'var(--text)', alignItems: 'baseline' }}>
-          {on && <Flame size={15} color={color} />}{current}<span className="faint" style={{ fontSize: '0.8rem' }}>{unit}</span>
-        </span>
-        <span className="faint" style={{ fontSize: '0.72rem' }}>{label}{caption ? ` · ${caption}` : ''}</span>
-      </div>
-    </div>
+    <span title={`${date}: ${status}`} style={{ width: 20, height: 20, borderRadius: 6, background: bg, display: 'inline-grid', placeItems: 'center', fontSize: 9, color: status === 'skip' ? 'var(--text-faint)' : 'var(--bg)', fontWeight: 700 }}>
+      {date.slice(8)}
+    </span>
   )
 }
 
