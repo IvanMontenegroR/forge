@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { ChevronLeft, Check, Plus, Trophy, TrendingUp, Info, Trash2, Film, Timer, ChevronDown } from 'lucide-react'
@@ -142,6 +142,7 @@ function ActiveSession({ session, dayPlan, profile, navigate }) {
           pde={pde}
           session={session}
           existing={(sessionSets || []).filter((s) => s.exercise_id === pde.exercise_id)}
+          setsLoaded={sessionSets !== undefined}
           readOnly={done}
           index={idx}
           total={exercises.length}
@@ -177,7 +178,7 @@ function Stat({ value, label, suffix }) {
   )
 }
 
-function ExerciseBlock({ pde, session, existing, readOnly, index, total, expanded, onToggle, onSetDone, onCompleted }) {
+function ExerciseBlock({ pde, session, existing, setsLoaded, readOnly, index, total, expanded, onToggle, onSetDone, onCompleted }) {
   const { user } = useAuth()
   const qc = useQueryClient()
   const ex = pde.exercise
@@ -193,18 +194,28 @@ function ExerciseBlock({ pde, session, existing, readOnly, index, total, expande
 
   const [showGif, setShowGif] = useState(false)
 
-  // Filas locales (sincronizan con DB al editar)
+  // Filas locales (sincronizan con DB al editar). Se hidratan UNA sola vez por
+  // ejercicio, fusionando las series guardadas dentro de un andamiaje de siempre
+  // ≥ targetSets filas (por set_number). Así marcar/editar una serie no borra las
+  // demás ni genera números duplicados: después de hidratar, persist() es la
+  // única fuente de verdad de `rows` (no lo pisa el refetch).
   const [rows, setRows] = useState([])
+  const hydratedFor = useRef(null)
   useEffect(() => {
-    const sorted = [...existing].sort((a, b) => a.set_number - b.set_number)
-    if (sorted.length) {
-      setRows(sorted.map((s) => ({ id: s.id, set_number: s.set_number, weight: Number(s.weight_kg), reps: Number(s.reps), done: s.done })))
-    } else {
-      const start = suggestWeight || 0
-      setRows(Array.from({ length: targetSets }, (_, i) => ({ set_number: i + 1, weight: start, reps: pde.rep_low, done: false })))
-    }
+    if (!setsLoaded || hydratedFor.current === pde.id) return
+    hydratedFor.current = pde.id
+    const bySet = new Map(existing.map((s) => [s.set_number, s]))
+    const maxSaved = existing.reduce((m, s) => Math.max(m, s.set_number), 0)
+    const count = Math.max(targetSets, maxSaved)
+    const start = suggestWeight || 0
+    setRows(Array.from({ length: count }, (_, i) => {
+      const s = bySet.get(i + 1)
+      return s
+        ? { id: s.id, set_number: s.set_number, weight: Number(s.weight_kg), reps: Number(s.reps), done: s.done }
+        : { set_number: i + 1, weight: start, reps: pde.rep_low, done: false }
+    }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [existing.length, pde.id])
+  }, [setsLoaded, pde.id])
 
   async function persist(idx, patch) {
     const row = { ...rows[idx], ...patch }
@@ -224,7 +235,10 @@ function ExerciseBlock({ pde, session, existing, readOnly, index, total, expande
   }
 
   function addSet() {
-    setRows((cur) => [...cur, { set_number: cur.length + 1, weight: suggestWeight || 0, reps: pde.rep_low, done: false }])
+    setRows((cur) => {
+      const n = cur.reduce((m, r) => Math.max(m, r.set_number), 0) + 1
+      return [...cur, { set_number: n, weight: suggestWeight || 0, reps: pde.rep_low, done: false }]
+    })
   }
 
   async function removeRow(idx) {
