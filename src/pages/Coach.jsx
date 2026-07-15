@@ -26,20 +26,29 @@ export default function Coach() {
   async function buildPayload() {
     const today = todayStr()
     const nutFrom = addDays(today, -29) // últimos 30 días de nutrición
-    const [sessions, metrics, sleep, cardio, nutRows] = await Promise.all([
+    const [sessions, metrics, sleep, cardio, nutRows, exercises] = await Promise.all([
       db.listSessions(user.id, 20),
       db.listBodyMetrics(user.id),
       db.listSleep(user.id, 14),
       db.listCardio(user.id, 20),
       db.getNutritionRange(user.id, nutFrom, today),
+      db.listExercises(),
     ])
+    const exName = new Map(exercises.map((e) => [e.id, e.name]))
     const completed = sessions.filter((s) => s.status === 'completed')
     const sessionDetails = []
     for (const s of completed.slice(0, 6)) {
       const sets = await db.getSessionSets(s.id)
+      // Agrupar por ejercicio (con nombre, no el UUID) para que el coach lo lea claro.
+      const porEjercicio = new Map()
+      for (const x of sets.filter((v) => v.done && !v.is_warmup)) {
+        const nombre = exName.get(x.exercise_id) || 'Ejercicio'
+        if (!porEjercicio.has(nombre)) porEjercicio.set(nombre, [])
+        porEjercicio.get(nombre).push({ w: Number(x.weight_kg), reps: x.reps })
+      }
       sessionDetails.push({
         date: s.date, title: s.title, volume: s.total_volume_kg,
-        sets: sets.filter((x) => x.done && !x.is_warmup).map((x) => ({ ex: x.exercise_id, w: x.weight_kg, reps: x.reps })),
+        ejercicios: [...porEjercicio.entries()].map(([ejercicio, series]) => ({ ejercicio, series })),
       })
     }
 
