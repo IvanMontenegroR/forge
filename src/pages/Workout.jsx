@@ -113,12 +113,12 @@ function ActiveSession({ session, dayPlan, profile, navigate }) {
       <Header onBack={() => navigate('/')} title={dayPlan?.name || 'Entrenamiento'} />
 
       {rest > 0 && !done && (
-        <div className="card" style={{ borderColor: 'var(--accent)', marginBottom: 12, padding: 12 }}>
+        <div style={{ position: 'fixed', left: '50%', transform: 'translateX(-50%)', bottom: 'calc(var(--nav-h) + var(--safe-b) + 12px)', width: 'calc(100% - 24px)', maxWidth: 'var(--maxw)', zIndex: 60, background: 'var(--surface)', border: '1px solid var(--accent)', borderRadius: 14, padding: '12px 14px', boxShadow: 'var(--shadow)' }}>
           <div className="row between">
-            <span className="row gap-8" style={{ fontWeight: 700 }}><Timer size={18} color="var(--accent)" /> Descanso <span className="num" style={{ color: 'var(--accent)' }}>{mmss(rest)}</span></span>
+            <span className="row gap-8" style={{ fontWeight: 700 }}><Timer size={18} color="var(--accent)" /> Descanso <span className="num" style={{ color: 'var(--accent)', fontSize: '1.1rem' }}>{mmss(rest)}</span></span>
             <div className="row gap-8">
               <button className="btn btn-ghost btn-sm" onClick={() => setRest((s) => s + 30)}>+30s</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => setRest(0)}>Saltar</button>
+              <button className="btn btn-primary btn-sm" onClick={() => setRest(0)}>Saltar</button>
             </div>
           </div>
         </div>
