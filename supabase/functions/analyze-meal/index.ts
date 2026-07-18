@@ -42,7 +42,9 @@ Reglas:
 - total_kcal y total_protein_g son la suma de los items.
 - Puede venir una foto, una descripción de texto, o ambas: combiná toda la info para estimar mejor.
 - Buscá activamente objetos de referencia para calcular el tamaño de la porción (cubiertos, mano, plato o vaso estándar, latas, botellas, monedas) y usalos para estimar mejor los gramos/volumen. Si el usuario menciona una referencia en el texto (ej. "la cuchara es sopera", "el vaso es de 500 ml"), priorizala.
-- "note": una frase breve con supuestos o el nivel de confianza; mencioná qué referencia usaste para la escala si hubo una.
+- PREPARACIÓN (calorías): salvo que el usuario aclare lo contrario, asumí preparación ESTÁNDAR de restaurante/casa: cocinado con aceite o manteca, salsas normales, y cortes de carne intermedios (grasa normal). Es preferible errar un poco ALTO en calorías que bajo. Si el usuario especifica ("sin aceite", "a la plancha", "carne magra", "light"), respetá eso.
+- PROTEÍNA (precisa): sumá la proteína de TODOS los componentes del plato, no solo la fuente principal. Contá también queso, huevo, fiambre/bacon, pan, lácteos, legumbres y frutos secos. No subestimes la proteína: buscá que sea lo más exacta posible. Recordá que los cortes magros tienen MENOS kcal pero MÁS proteína por gramo que los grasos.
+- "note": una frase breve con supuestos o el nivel de confianza; mencioná qué referencia usaste para la escala y qué preparación asumiste (ej. "asumí cocido con aceite"), así el usuario puede corregir si sabe cómo se hizo.
 - Si no hay comida identificable, devolvé items vacío y explicá en "note".
 - Las estimaciones son aproximadas; no inventes precisión falsa.`
 
