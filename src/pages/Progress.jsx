@@ -37,6 +37,9 @@ export default function Progress() {
 
 // ───────────────────────── Nutrición ─────────────────────────
 
+// Formatea con separador de miles (es: 12.600).
+const fmtNum = (n) => Math.round(Number(n) || 0).toLocaleString('es')
+
 // Color de la barra de calorías según cercanía al tope: azul → ámbar → rojo.
 function kcalVariant(value, max) {
   const r = max ? value / max : 0
@@ -153,8 +156,8 @@ function NutritionProgress({ profile }) {
                     </div>
                     <div className="grow col" style={{ gap: 6 }}>
                       <div className="row between" style={{ fontSize: '0.78rem' }}>
-                        <span className="row gap-4"><Flame size={12} color="var(--info)" /> {Math.round(d.kcal)}/{kcalGoal} {d.kcalOver && <AlertTriangle size={12} color="var(--warn)" />}</span>
-                        <span className="row gap-4"><Beef size={12} color="var(--danger)" /> {Math.round(d.protein_g)}/{proteinGoal}g {d.proteinReached && <Check size={13} color="var(--success)" />}</span>
+                        <span className="row gap-4"><Flame size={12} color="var(--info)" /> {fmtNum(d.kcal)}/{fmtNum(kcalGoal)} {d.kcalOver && <AlertTriangle size={12} color="var(--warn)" />}</span>
+                        <span className="row gap-4"><Beef size={12} color="var(--danger)" /> {fmtNum(d.protein_g)}/{fmtNum(proteinGoal)}g {d.proteinReached && <Check size={13} color="var(--success)" />}</span>
                       </div>
                       <ProgressBar value={d.kcal} max={kcalGoal} variant={kcalVariant(d.kcal, kcalGoal)} />
                       <ProgressBar value={d.protein_g} max={proteinGoal} variant={d.proteinReached ? 'success' : ''} />
@@ -178,7 +181,7 @@ function NutritionProgress({ profile }) {
                           <div className="grow">
                             <strong style={{ fontSize: '0.9rem' }}>{l.name}{l.qty > 1 ? ` ×${l.qty}` : ''}</strong>
                             <span className="faint num" style={{ display: 'block', fontSize: '0.78rem' }}>
-                              {Math.round(l.protein_g * l.qty)} g proteína{l.kcal ? ` · ${Math.round(l.kcal * l.qty)} kcal` : ''}
+                              {fmtNum(l.protein_g * l.qty)} g proteína{l.kcal ? ` · ${fmtNum(l.kcal * l.qty)} kcal` : ''}
                             </span>
                           </div>
                           <button className="btn btn-ghost btn-icon btn-sm" onClick={() => duplicateNut(l)} aria-label="duplicar"><Copy size={15} /></button>
@@ -198,8 +201,8 @@ function NutritionProgress({ profile }) {
       {/* Totales de la semana (no promedio) */}
       <Card title="Totales de la semana">
         <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
-          <Stat label="Proteína total" value={Math.round(weekProt)} suffix={`/ ${weekProtGoal} g`} color={weekProt >= weekProtGoal ? 'var(--success)' : 'var(--text)'} />
-          <Stat label="Calorías totales" value={Math.round(weekKcal)} suffix={`/ ${weekKcalGoal}`} color={weekKcal > weekKcalGoal ? 'var(--warn)' : 'var(--text)'} />
+          <Stat label="Proteína total" value={fmtNum(weekProt)} suffix={`/ ${fmtNum(weekProtGoal)} g`} color={weekProt >= weekProtGoal ? 'var(--success)' : 'var(--text)'} />
+          <Stat label="Calorías totales" value={fmtNum(weekKcal)} suffix={`/ ${fmtNum(weekKcalGoal)}`} color={weekKcal > weekKcalGoal ? 'var(--warn)' : 'var(--text)'} />
         </div>
         <div className="col gap-8 mt-12">
           <ProgressBar value={weekProt} max={weekProtGoal} variant={weekProt >= weekProtGoal ? 'success' : ''} />
@@ -247,7 +250,7 @@ function TrainingProgress({ profile }) {
     <>
       <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)', marginBottom: 14 }}>
         <Card style={{ padding: 14 }}><Stat label="Sesiones completadas" value={completedCount} /></Card>
-        <Card style={{ padding: 14 }}><Stat label="Volumen esta semana" value={weekly.at(-1)?.Volumen ?? 0} suffix="kg" /></Card>
+        <Card style={{ padding: 14 }}><Stat label="Volumen esta semana" value={fmtNum(weekly.at(-1)?.Volumen ?? 0)} suffix="kg" /></Card>
       </div>
 
       <Card title="Volumen semanal">
