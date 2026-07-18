@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Trophy, Dumbbell, Beef, Flame, Check, AlertTriangle, ChevronLeft, ChevronRight, Pencil, X, Copy } from 'lucide-react'
@@ -9,7 +10,7 @@ import {
   useNutritionRange, qk,
 } from '../data/hooks'
 import {
-  weekStart, addDays, todayStr, monthStart, monthEnd, monthLabel,
+  weekStart, addDays, todayStr,
   WEEKDAY_NAMES, prettyDate,
 } from '../lib/dates'
 import { Card, Spinner, Empty, Stat, ProgressBar } from '../components/ui'
@@ -59,6 +60,7 @@ function aggregateByDate(rows) {
 function NutritionProgress({ profile }) {
   const { user } = useAuth()
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const proteinGoal = profile.protein_goal_g || 145
   const kcalGoal = profile.target_kcal || 2050
   const today = todayStr()
@@ -110,8 +112,12 @@ function NutritionProgress({ profile }) {
   }), [from, byDay, proteinGoal, kcalGoal, today])
 
   const logged = days.filter((d) => d.hasData)
-  const proteinDaysOk = logged.filter((d) => d.proteinReached).length
-  const kcalDaysOver = logged.filter((d) => d.kcalOver).length
+
+  // Totales de la semana (no promedio) vs meta semanal (×7).
+  const weekKcal = days.reduce((s, d) => s + d.kcal, 0)
+  const weekProt = days.reduce((s, d) => s + d.protein_g, 0)
+  const weekKcalGoal = kcalGoal * 7
+  const weekProtGoal = proteinGoal * 7
 
   const rangeLabel = `${prettyDate(from).split(',')[0].replace(/^\w/, (c) => c.toUpperCase())} ${from.slice(8)} – ${to.slice(8)}/${to.slice(5, 7)}`
 
@@ -127,17 +133,7 @@ function NutritionProgress({ profile }) {
         <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setWeekOff((o) => Math.min(0, o + 1))} disabled={weekOff >= 0} aria-label="semana siguiente"><ChevronRight size={18} /></button>
       </div>
 
-      {/* Resumen semanal */}
-      <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)', marginBottom: 14 }}>
-        <Card style={{ padding: 14 }}>
-          <Stat label="Días con proteína OK" value={`${proteinDaysOk}/${logged.length || 0}`} color="var(--success)" />
-        </Card>
-        <Card style={{ padding: 14 }}>
-          <Stat label="Días excedido en kcal" value={`${kcalDaysOver}/${logged.length || 0}`} color={kcalDaysOver ? 'var(--warn)' : 'var(--text)'} />
-        </Card>
-      </div>
-
-      <Card title="Semana (lun–dom)">
+      <Card title="Semana (lun–dom)" action={<button className="btn btn-sm btn-ghost" onClick={() => navigate('/nutrition')}>Registrar</button>}>
         {isLoading ? <Spinner /> : (
           <div className="col" style={{ gap: 14 }}>
             {days.map((d) => {
@@ -199,44 +195,19 @@ function NutritionProgress({ profile }) {
         )}
       </Card>
 
-      <MonthlyNutrition profile={profile} proteinGoal={proteinGoal} kcalGoal={kcalGoal} />
+      {/* Totales de la semana (no promedio) */}
+      <Card title="Totales de la semana">
+        <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
+          <Stat label="Proteína total" value={Math.round(weekProt)} suffix={`/ ${weekProtGoal} g`} color={weekProt >= weekProtGoal ? 'var(--success)' : 'var(--text)'} />
+          <Stat label="Calorías totales" value={Math.round(weekKcal)} suffix={`/ ${weekKcalGoal}`} color={weekKcal > weekKcalGoal ? 'var(--warn)' : 'var(--text)'} />
+        </div>
+        <div className="col gap-8 mt-12">
+          <ProgressBar value={weekProt} max={weekProtGoal} variant={weekProt >= weekProtGoal ? 'success' : ''} />
+          <ProgressBar value={weekKcal} max={weekKcalGoal} variant={kcalVariant(weekKcal, weekKcalGoal)} />
+        </div>
+        <p className="faint center mt-12" style={{ fontSize: '0.78rem' }}>{logged.length} de 7 días registrados</p>
+      </Card>
     </>
-  )
-}
-
-function MonthlyNutrition({ proteinGoal, kcalGoal }) {
-  const from = monthStart()
-  const to = monthEnd()
-  const { data: rows } = useNutritionRange(from, to)
-  const byDay = useMemo(() => aggregateByDate(rows), [rows])
-
-  const logged = [...byDay.values()]
-  const days = logged.length
-  const totKcal = logged.reduce((s, d) => s + d.kcal, 0)
-  const totProt = logged.reduce((s, d) => s + d.protein_g, 0)
-  const proteinDaysOk = logged.filter((d) => d.protein_g >= proteinGoal).length
-  const kcalDaysOver = logged.filter((d) => d.kcal > kcalGoal).length
-  const avgKcal = days ? Math.round(totKcal / days) : 0
-  const avgProt = days ? Math.round(totProt / days) : 0
-
-  return (
-    <Card title={`Mes — ${monthLabel().replace(/^\w/, (c) => c.toUpperCase())}`}>
-      {days === 0 ? (
-        <Empty icon="🍽️" title="Sin registros este mes">Cargá comidas para ver tu progreso mensual.</Empty>
-      ) : (
-        <>
-          <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
-            <Stat label="Prom. proteína/día" value={`${avgProt}`} suffix={`/ ${proteinGoal} g`} color={avgProt >= proteinGoal ? 'var(--success)' : 'var(--text)'} />
-            <Stat label="Prom. calorías/día" value={`${avgKcal}`} suffix={`/ ${kcalGoal}`} color={avgKcal > kcalGoal ? 'var(--warn)' : 'var(--text)'} />
-          </div>
-          <div className="row between mt-12" style={{ fontSize: '0.82rem' }}>
-            <span className="pill success" style={{ width: 'fit-content' }}><Check size={13} /> {proteinDaysOk}/{days} días proteína OK</span>
-            <span className="pill warn" style={{ width: 'fit-content' }}><AlertTriangle size={13} /> {kcalDaysOver}/{days} días excedido</span>
-          </div>
-          <p className="faint center mt-12" style={{ fontSize: '0.78rem' }}>{days} días registrados en el mes</p>
-        </>
-      )}
-    </Card>
   )
 }
 
