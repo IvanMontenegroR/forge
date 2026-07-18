@@ -316,11 +316,14 @@ export default function Nutrition() {
       <Card title="Quick-add">
         <div className="row wrap gap-8">
           {(foods || []).map((f) => (
-            <button key={f.id} className="chip" onClick={() => add(f)} title={f.serving || ''}>
-              <Beef size={14} /> {f.name}
-              <span className="faint num">
-                {Number(f.protein_g) > 0 ? `+${f.protein_g}g` : ''}{Number(f.protein_g) > 0 && f.kcal ? ' · ' : ''}{f.kcal ? `${f.kcal} kcal` : ''}
-              </span>
+            <button key={f.id} className="chip chip-food" onClick={() => add(f)} title={f.serving || ''}>
+              <Beef size={14} style={{ flexShrink: 0 }} />
+              <span className="chip-food-name">{f.name}</span>
+              {(Number(f.protein_g) > 0 || Number(f.kcal) > 0) && (
+                <span className="faint num chip-food-macro">
+                  {Number(f.protein_g) > 0 ? `+${f.protein_g}g` : ''}{Number(f.protein_g) > 0 && f.kcal ? ' · ' : ''}{f.kcal ? `${f.kcal} kcal` : ''}
+                </span>
+              )}
             </button>
           ))}
           <button className="chip" onClick={() => setShowCustom((v) => !v)}><Plus size={14} /> Otro</button>
