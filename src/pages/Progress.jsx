@@ -198,16 +198,23 @@ function NutritionProgress({ profile }) {
         )}
       </Card>
 
-      {/* Totales de la semana (no promedio) */}
+      {/* Totales de la semana (no promedio). Calorías a la izquierda/arriba, proteína a la derecha/abajo. */}
       <Card title="Totales de la semana">
         <div className="stat-grid" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
-          <Stat label="Proteína total" value={fmtNum(weekProt)} suffix={`/ ${fmtNum(weekProtGoal)} g`} color={weekProt >= weekProtGoal ? 'var(--success)' : 'var(--text)'} />
           <Stat label="Calorías totales" value={fmtNum(weekKcal)} suffix={`/ ${fmtNum(weekKcalGoal)}`} color={weekKcal > weekKcalGoal ? 'var(--warn)' : 'var(--text)'} />
+          <Stat label="Proteína total" value={fmtNum(weekProt)} suffix={`/ ${fmtNum(weekProtGoal)} g`} color={weekProt >= weekProtGoal ? 'var(--success)' : 'var(--text)'} />
         </div>
         <div className="col gap-8 mt-12">
-          <ProgressBar value={weekProt} max={weekProtGoal} variant={weekProt >= weekProtGoal ? 'success' : ''} />
           <ProgressBar value={weekKcal} max={weekKcalGoal} variant={kcalVariant(weekKcal, weekKcalGoal)} />
+          <ProgressBar value={weekProt} max={weekProtGoal} variant={weekProt >= weekProtGoal ? 'success' : ''} />
         </div>
+        {/* Solo semanas pasadas: promedio por día. */}
+        {weekOff < 0 && logged.length > 0 && (
+          <div className="stat-grid mt-12" style={{ gridTemplateColumns: 'repeat(2,1fr)' }}>
+            <span className="faint" style={{ fontSize: '0.8rem' }}>Prom. <span className="num">{fmtNum(weekKcal / logged.length)}</span> kcal/día</span>
+            <span className="faint" style={{ fontSize: '0.8rem' }}>Prom. <span className="num">{fmtNum(weekProt / logged.length)}</span> g/día</span>
+          </div>
+        )}
         <p className="faint center mt-12" style={{ fontSize: '0.78rem' }}>{logged.length} de 7 días registrados</p>
       </Card>
     </>
